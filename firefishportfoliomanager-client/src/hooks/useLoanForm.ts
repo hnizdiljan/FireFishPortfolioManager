@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { LoanInput, LoanStatus /*, Loan */ } from '../types/loanTypes';
 import { fetchLoanById, createLoan as apiCreateLoan, updateLoan as apiUpdateLoan } from '../services/loanService';
 import { useAuth } from '../context/AuthContext';
-import { UserDto } from '../types/userTypes';
-import { fetchCurrentUser } from '../services/userService';
 
 const initialLoanState: LoanInput = {
   loanId: '',

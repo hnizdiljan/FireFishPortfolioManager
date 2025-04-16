@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 // Removed unused imports: useState, useEffect, useCallback, getPortfolioSummary
 // import { useState, useEffect, useCallback } from 'react';
 // import { getPortfolioSummary } from '../services/apiService';
-import { useAuth } from '../context/AuthContext';
 
 // Interface for the data needed by child components, matching PortfolioSummary structure
 // Note: We might not need to return the *exact* PortfolioSummary type if 
