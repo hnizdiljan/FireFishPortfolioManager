@@ -93,8 +93,9 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
 
     // Set visible range to start from the first data point
     if (seriesData.length > 0) {
-      const firstTime = seriesData[0].time;
-      const lastTime = seriesData[seriesData.length - 1].time;
+      // Add ! to assert non-null for array elements due to TS compiler strictness in build env
+      const firstTime = seriesData[0]!.time;
+      const lastTime = seriesData[seriesData.length - 1]!.time;
       chart.timeScale().setVisibleRange({
         from: firstTime,
         to: lastTime,
