@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: FireFishPortfolioManager.Api/Dockerfile
+    ports:
+      - "7227:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=FireFishDB;User=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;
+    depends_on:
+      - db
+    networks:
+      - firefish-network
+
+  client:
+    build:
+      context: .
+      dockerfile: firefishportfoliomanager-client/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    environment:
+      - REACT_APP_API_URL=http://localhost:7227
+    networks:
+      - firefish-network
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrongPassword123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - firefish-db-data:/var/opt/mssql
+    networks:
+      - firefish-network
+
+networks:
+  firefish-network:
+    driver: bridge
+
+volumes:
+  firefish-db-data:
