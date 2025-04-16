@@ -1,0 +1,65 @@
+name: Deploy .NET API to Azure App Service
+
+on:
+  push:
+    branches:
+      - main # Trigger deployment on push to the main branch
+    paths:
+      - 'FireFishPortfolioManager.Api/**' # Only run if changes are in the API folder
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  AZURE_WEBAPP_NAME: firefishportfolioapi   # TODO: Replace with your Azure App Service name
+  DOTNET_VERSION: '9.0.x'                     # Target .NET version from .csproj
+  PROJECT_PATH: 'FireFishPortfolioManager.Api/FireFishPortfolioManager.Api.csproj' # Path to your .csproj file
+  OUTPUT_PATH: '${{ github.workspace }}/publish' # Output path for published files
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up .NET Core SDK ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+
+    - name: Build
+      run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+
+    - name: Publish
+      run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-build --output ${{ env.OUTPUT_PATH }}
+
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v4
+      with:
+        name: dotnet-app
+        path: ${{ env.OUTPUT_PATH }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'Production' # Optional: Define an environment for protection rules
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v4
+      with:
+        name: dotnet-app
+        path: ${{ env.OUTPUT_PATH }} # Download to the same path used in build
+
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v3 # Use the official Azure deployment action
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} # Use the secret stored in GitHub
+        package: ${{ env.OUTPUT_PATH }} 
