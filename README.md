@@ -175,7 +175,7 @@ az webapp create --name FireFishPortfolioAPI --resource-group FireFishPortfolioR
 
 5. Nastavte connection string pro databázi:
 ```
-az webapp config connection-string set --name FireFishPortfolioAPI --resource-group FireFishPortfolioResourceGroup --connection-string-type SQLAzure --settings DefaultConnection="Server=tcp:firefish-sql-server.database.windows.net,1433;Database=FireFishDB;User ID=serveradmin;Password=ComplexPassword123!;Encrypt=true;Connection Timeout=30;"
+az webapp config connection-string set --name FireFishPortfolioAPI --resource-group FireFishPortfolioResourceGroup --connection-string-type SQLAzure --settings DefaultConnection="Server=tcp:firefish-sql-server.database.windows.net,1433;Database=FireFishDB;User ID=serveradmin;Password=<PASSWD>;Encrypt=true;Connection Timeout=30;"
 ```
 
 6. Publikujte API do Azure:
