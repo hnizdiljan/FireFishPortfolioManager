@@ -1,0 +1,19 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "routes": [
+    {
+      "route": "/api/*",
+      "backend": "firefishportfolioapi",
+      "rewrite": "/api/*"
+    }
+  ],
+  "backend": {
+    "backendName": "firefishportfolioapi",
+    "backendBaseUrl": "https://firefishportfolioapi.azurewebsites.net" 
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-store, max-age=0"
+  }
+} 
