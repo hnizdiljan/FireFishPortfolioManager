@@ -87,8 +87,8 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
     // Prepare data
     const seriesData = getSeriesData();
     // Remove null assertion `!` as filter guarantees non-null, but map still needs it inside
-    czkSeries.setData(seriesData.map(d => ({ time: d.time, value: d.czk })));
-    btcSeries.setData(seriesData.map(d => ({ time: d.time, value: d.btc })));
+    czkSeries.setData(seriesData.map(d => ({ time: d!.time, value: d!.czk })));
+    btcSeries.setData(seriesData.map(d => ({ time: d!.time, value: d!.btc })));
     // collateralSeries.setData(seriesData.map(d => ({ time: d.time, value: d.collateral }))); <-- REMOVE collateral setData
 
     // Set visible range to start from the first data point
