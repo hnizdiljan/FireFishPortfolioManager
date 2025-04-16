@@ -33,7 +33,6 @@ export const PortfolioSummaryRow: React.FC<SummaryRowProps> = ({ summary }) => {
   // Format values with localization
   const formatCzk = (value?: number) => (typeof value === 'number' && !isNaN(value)) ? `${value.toLocaleString()} CZK` : 'N/A';
   const formatBtc = (value: number) => `${value} BTC`;
-  const formatPercent = (value: number) => `${(value * 100).toFixed(0)}%`;
   
   const { chartData, isLoading, error } = useStatisticsService();
   

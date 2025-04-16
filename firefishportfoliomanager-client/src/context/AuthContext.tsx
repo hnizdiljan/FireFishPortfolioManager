@@ -1,6 +1,6 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { EventType, EventMessage, AuthenticationResult, Configuration, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { useMsal } from "@azure/msal-react";
-import { InteractionRequiredAuthError, PublicClientApplication } from "@azure/msal-browser";
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { apiConfig, loginRequest } from "../authConfig";
 
 interface AuthContextProps {

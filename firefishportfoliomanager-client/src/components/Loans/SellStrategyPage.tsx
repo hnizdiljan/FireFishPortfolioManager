@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loan, SellOrder } from '../../types/loanTypes';
-import { SellStrategy, SellStrategyOrder } from '../../types/strategyTypes';
+// import { Loan, SellOrder } from '../../types/loanTypes'; // Removed unused imports
+// import { SellStrategy, SellStrategyOrder } from '../../types/strategyTypes'; // Removed unused imports
 import { useSellStrategy } from '../../hooks/useSellStrategy';
 
 const SellStrategyPage: React.FC = () => {
@@ -15,7 +15,7 @@ const SellStrategyPage: React.FC = () => {
     isLoading,
     isExecuting,
     error,
-    refreshData,
+    // refreshData, // Removed unused variable
     executeStrategy
   } = useSellStrategy(numericId);
 

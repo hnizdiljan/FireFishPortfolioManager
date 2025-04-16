@@ -16,7 +16,7 @@ import PortfolioChart from './PortfolioChart'; // Import the new chart component
 
 const StatisticsPage: React.FC = () => {
   // Use the hook directly
-  const { statisticsSummary, chartData, isLoading, error, refreshStatistics } = useStatisticsService();
+  const { statisticsSummary, chartData, isLoading, error /*, refreshStatistics */ } = useStatisticsService();
 
   if (isLoading) { // Use isLoading from hook
     return (

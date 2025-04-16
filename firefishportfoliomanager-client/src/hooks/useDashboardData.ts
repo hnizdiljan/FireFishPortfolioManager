@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loan, LoanStatus } from '../types/loanTypes';
+import { Loan /*, LoanStatus */ } from '../types/loanTypes'; // LoanStatus removed
 import { UserDto } from '../types/userTypes';
 import { fetchCurrentUser } from '../services/userService';
 import { fetchLoans as apiFetchLoans } from '../services/loanService'; // Alias to avoid naming conflict

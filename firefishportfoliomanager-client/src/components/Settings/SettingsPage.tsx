@@ -69,7 +69,7 @@ const SettingsPage: React.FC = () => {
       const newLtvPercent = Math.round(100 * (newLiquidationPrice / btcPrice));
       setLtvPercent(newLtvPercent);
     }
-  }, [drawdownFromAth, athPrice, btcPrice]);
+  }, [drawdownFromAth, athPrice, btcPrice, lastChanged]);
 
   useEffect(() => {
     if (lastChanged === 'liquidation' && btcPrice && athPrice && liquidationPrice !== null) {
@@ -78,7 +78,7 @@ const SettingsPage: React.FC = () => {
       const newLtvPercent = Math.round(100 * (liquidationPrice / btcPrice));
       setLtvPercent(newLtvPercent);
     }
-  }, [liquidationPrice, athPrice, btcPrice]);
+  }, [liquidationPrice, athPrice, btcPrice, lastChanged]);
 
   useEffect(() => {
     if (lastChanged === 'ltv' && btcPrice && athPrice) {
@@ -87,7 +87,7 @@ const SettingsPage: React.FC = () => {
       const newDrawdown = Math.round(100 * (1 - newLiquidationPrice / athPrice));
       setDrawdownFromAth(newDrawdown);
     }
-  }, [ltvPercent, btcPrice, athPrice]);
+  }, [ltvPercent, btcPrice, athPrice, lastChanged]);
 
   const platformLimitPrice = btcPrice ? btcPrice * 0.5 : null;
   const effectiveLiquidationPrice = (liquidationPrice && platformLimitPrice)

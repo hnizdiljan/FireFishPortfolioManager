@@ -1,5 +1,7 @@
+import { useAuth } from '../context/AuthContext'; // Corrected path
+// import { InteractionRequiredAuthError } from '@azure/msal-browser'; // Removed unused import
 import { apiConfig } from "../authConfig";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { Loan, LoanInput } from '../types/loanTypes';
 
 // Typ pro funkci, která umí získat token
 type GetAccessTokenFunction = () => Promise<string | null>;
