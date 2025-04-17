@@ -1,6 +1,7 @@
 using FireFishPortfolioManager.Api.Models;
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace FireFishPortfolioManager.Api.Services
 {
@@ -64,57 +65,37 @@ namespace FireFishPortfolioManager.Api.Services
         {
             if (loan == null)
                 throw new ArgumentNullException(nameof(loan));
-                
             if (currentBtcPriceCzk <= 0)
                 throw new ArgumentException("BTC price must be greater than zero");
-                
-            // Calculate the target sell price based on profit percentage
-            decimal targetProfitMultiplier = 1 + (loan.TotalTargetProfitPercentage / 100);
-            decimal targetSellPriceCzk = currentBtcPriceCzk * targetProfitMultiplier;
-            
-            // Calculate how much BTC we need to sell to cover the loan repayment and fees
-            decimal btcToSellForRepayment = CalculateRequiredBtcForRepayment(loan, targetSellPriceCzk);
-            
-            // Calculate the remaining BTC after selling for repayment (profit)
-            decimal remainingBtc = loan.PurchasedBtc - btcToSellForRepayment;
-            
-            // Create the sell strategy
+
+            // Calculate target sell price based on total profit percentage
+            decimal targetSellPrice = currentBtcPriceCzk * (1 + loan.TotalTargetProfitPercentage / 100m);
+
+            // Calculate BTC needed to cover repayment and fees
+            decimal btcToSell = CalculateRequiredBtcForRepayment(loan, currentBtcPriceCzk);
+
+            // Build simple sell strategy
             var strategy = new SellStrategy
             {
                 LoanId = loan.Id,
                 CurrentBtcPriceCzk = currentBtcPriceCzk,
-                TargetSellPriceCzk = targetSellPriceCzk,
-                BtcToSellForRepayment = btcToSellForRepayment,
-                RemainingBtcProfit = remainingBtc,
-                IsViable = remainingBtc > 0
+                TargetSellPriceCzk = targetSellPrice,
+                BtcToSellForRepayment = btcToSell,
+                RemainingBtcProfit = loan.PurchasedBtc - btcToSell,
+                IsViable = (loan.PurchasedBtc > btcToSell && loan.TotalTargetProfitPercentage > 0),
+                SellOrders = new List<SellStrategyOrder>()
             };
-            
-            // Generate individual sell orders if the strategy is viable
+
             if (strategy.IsViable)
             {
-                decimal btcPerOrder = loan.MaxSellOrders > 1 
-                    ? Math.Max(btcToSellForRepayment / loan.MaxSellOrders, loan.MinSellOrderSize)
-                    : btcToSellForRepayment;
-                
-                int orderCount = loan.MaxSellOrders > 1 
-                    ? (int)Math.Ceiling(btcToSellForRepayment / btcPerOrder)
-                    : 1;
-                
-                for (int i = 0; i < orderCount; i++)
+                strategy.SellOrders.Add(new SellStrategyOrder
                 {
-                    decimal orderBtcAmount = i == orderCount - 1 
-                        ? btcToSellForRepayment - (btcPerOrder * i)
-                        : btcPerOrder;
-                    
-                    strategy.SellOrders.Add(new SellStrategyOrder
-                    {
-                        BtcAmount = orderBtcAmount,
-                        PricePerBtc = targetSellPriceCzk,
-                        TotalCzk = orderBtcAmount * targetSellPriceCzk
-                    });
-                }
+                    BtcAmount = btcToSell,
+                    PricePerBtc = targetSellPrice,
+                    TotalCzk = btcToSell * targetSellPrice
+                });
             }
-            
+
             return strategy;
         }
     }

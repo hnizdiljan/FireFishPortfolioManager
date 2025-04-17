@@ -40,7 +40,14 @@ namespace FireFishPortfolioManager.Api.Services
             loan.UserId = userId;
             loan.CurrentBtcPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
             
-            // Calculate the repayment with fees in BTC
+            // Calculate automatic fields: repayment date, amount, fees, collateral, total sent
+            loan.RepaymentDate = loan.LoanDate.AddMonths(loan.LoanPeriodMonths);
+            loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            loan.FeesBtc = (loan.LoanAmountCzk * loan.FireFishFeePercent / 100m) / loan.CurrentBtcPrice;
+            if (loan.CollateralBtc <= 0)
+                loan.CollateralBtc = loan.LoanAmountCzk / loan.CurrentBtcPrice * (100m / user.LtvPercent);
+            loan.TotalSentBtc = loan.CollateralBtc + loan.TransactionFeesBtc + loan.FeesBtc;
             loan.RepaymentWithFeesBtc = _calculationService.CalculateRequiredBtcForRepayment(loan, loan.CurrentBtcPrice);
 
             _context.Loans.Add(loan);
@@ -68,32 +75,30 @@ namespace FireFishPortfolioManager.Api.Services
                 throw new KeyNotFoundException($"Loan {loanId} not found");
             }
 
-            // Update loan properties
-            loan.LoanId = loanUpdate.LoanId;
+            // Update core fields and recalculate automatic values
             loan.LoanDate = loanUpdate.LoanDate;
-            loan.RepaymentDate = loanUpdate.RepaymentDate;
-            loan.Status = loanUpdate.Status;
+            loan.LoanPeriodMonths = loanUpdate.LoanPeriodMonths;
+            loan.RepaymentDate = loan.LoanDate.AddMonths(loan.LoanPeriodMonths);
             loan.LoanAmountCzk = loanUpdate.LoanAmountCzk;
             loan.InterestRate = loanUpdate.InterestRate;
-            loan.RepaymentAmountCzk = loanUpdate.RepaymentAmountCzk;
-            loan.FeesBtc = loanUpdate.FeesBtc;
+            loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            var currentPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
+            loan.CurrentBtcPrice = currentPrice;
+            loan.FireFishFeePercent = loanUpdate.FireFishFeePercent;
+            loan.FeesBtc = (loan.LoanAmountCzk * loan.FireFishFeePercent / 100m) / currentPrice;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             loan.TransactionFeesBtc = loanUpdate.TransactionFeesBtc;
-            loan.CollateralBtc = loanUpdate.CollateralBtc;
-            loan.TotalSentBtc = loanUpdate.TotalSentBtc;
+            if (loanUpdate.CollateralBtc <= 0)
+                loan.CollateralBtc = loan.LoanAmountCzk / currentPrice * (100m / user.LtvPercent);
+            else
+                loan.CollateralBtc = loanUpdate.CollateralBtc;
+            loan.TotalSentBtc = loan.CollateralBtc + loan.TransactionFeesBtc + loan.FeesBtc;
             loan.PurchasedBtc = loanUpdate.PurchasedBtc;
-            
-            // Get the current BTC price and recalculate repayment
-            loan.CurrentBtcPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
-            loan.RepaymentWithFeesBtc = _calculationService.CalculateRequiredBtcForRepayment(loan, loan.CurrentBtcPrice);
-            
-            // Update profit strategy settings
-            loan.TargetProfitPercentage = loanUpdate.TargetProfitPercentage;
-            loan.MaxSellOrders = loanUpdate.MaxSellOrders;
-            loan.MinSellOrderSize = loanUpdate.MinSellOrderSize;
             loan.TotalTargetProfitPercentage = loanUpdate.TotalTargetProfitPercentage;
-            loan.WithdrawalWalletAddress = loanUpdate.WithdrawalWalletAddress;
-            
+            loan.BitcoinProfitRatio = loanUpdate.BitcoinProfitRatio;
+            loan.Status = loanUpdate.Status;
             loan.UpdatedAt = DateTime.UtcNow;
+            loan.RepaymentWithFeesBtc = _calculationService.CalculateRequiredBtcForRepayment(loan, loan.CurrentBtcPrice);
 
             await _context.SaveChangesAsync();
             
@@ -178,17 +183,17 @@ namespace FireFishPortfolioManager.Api.Services
             var sellOrders = new List<SellStrategyOrder>();
             bool isViable = false;
 
-            // Basic viability check (needs refinement)
-            if (loan.PurchasedBtc > requiredBtcForRepayment && loan.TargetProfitPercentage > 0)
+            // Basic viability check using total profit percentage
+            if (loan.PurchasedBtc > requiredBtcForRepayment && loan.TotalTargetProfitPercentage > 0)
             {
-                isViable = true; 
-                // Calculate target price based on profit percentage
-                var targetPrice = currentBtcPrice * (1 + loan.TargetProfitPercentage / 100m); 
+                isViable = true;
+                // Calculate target price based on total profit percentage
+                var targetPrice = currentBtcPrice * (1 + loan.TotalTargetProfitPercentage / 100m);
                 
                 // Simple strategy: one sell order for the required BTC at target price
                 sellOrders.Add(new SellStrategyOrder
                 {
-                    BtcAmount = requiredBtcForRepayment, // Or split into smaller orders
+                    BtcAmount = requiredBtcForRepayment,
                     PricePerBtc = targetPrice,
                     TotalCzk = requiredBtcForRepayment * targetPrice
                 });
