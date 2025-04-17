@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LoanInput, LoanStatus } from '../../types/loanTypes';
 import { useLoanForm } from '../../hooks/useLoanForm';
+import NumericInput from '../shared/NumericInput';
 
 const LoanForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,62 +99,62 @@ const LoanForm: React.FC = () => {
 
         <div>
           <label htmlFor="loanAmountCzk" className="block text-sm font-medium text-gray-700">Loan Amount (CZK)</label>
-          <input type="number" step="any" id="loanAmountCzk" name="loanAmountCzk" value={loanData.loanAmountCzk} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="loanAmountCzk" name="loanAmountCzk" value={loanData.loanAmountCzk} onChangeNumber={(num) => updateField('loanAmountCzk', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700">Interest Rate (%)</label>
-          <input type="number" step="any" id="interestRate" name="interestRate" value={loanData.interestRate} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="interestRate" name="interestRate" value={loanData.interestRate} onChangeNumber={(num) => updateField('interestRate', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="repaymentAmountCzk" className="block text-sm font-medium text-gray-700">Repayment Amount (CZK)</label>
-          <input type="number" step="any" id="repaymentAmountCzk" name="repaymentAmountCzk" value={loanData.repaymentAmountCzk} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="repaymentAmountCzk" name="repaymentAmountCzk" value={loanData.repaymentAmountCzk} onChangeNumber={(num) => updateField('repaymentAmountCzk', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="feesBtc" className="block text-sm font-medium text-gray-700">Fire Fish Fees (BTC)</label>
-          <input type="number" step="any" id="feesBtc" name="feesBtc" value={loanData.feesBtc} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="feesBtc" name="feesBtc" value={loanData.feesBtc} onChangeNumber={(num) => updateField('feesBtc', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="transactionFeesBtc" className="block text-sm font-medium text-gray-700">Transaction Fees (BTC)</label>
-          <input type="number" step="any" id="transactionFeesBtc" name="transactionFeesBtc" value={loanData.transactionFeesBtc} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="transactionFeesBtc" name="transactionFeesBtc" value={loanData.transactionFeesBtc} onChangeNumber={(num) => updateField('transactionFeesBtc', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="collateralBtc" className="block text-sm font-medium text-gray-700">Collateral (BTC)</label>
-          <input type="number" step="any" id="collateralBtc" name="collateralBtc" value={loanData.collateralBtc} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="collateralBtc" name="collateralBtc" value={loanData.collateralBtc} onChangeNumber={(num) => updateField('collateralBtc', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="totalSentBtc" className="block text-sm font-medium text-gray-700">Total BTC Sent</label>
-          <input type="number" step="any" id="totalSentBtc" name="totalSentBtc" value={loanData.totalSentBtc} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="totalSentBtc" name="totalSentBtc" value={loanData.totalSentBtc} onChangeNumber={(num) => updateField('totalSentBtc', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="purchasedBtc" className="block text-sm font-medium text-gray-700">Purchased BTC</label>
-          <input type="number" step="any" id="purchasedBtc" name="purchasedBtc" value={loanData.purchasedBtc} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="purchasedBtc" name="purchasedBtc" value={loanData.purchasedBtc} onChangeNumber={(num) => updateField('purchasedBtc', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="targetProfitPercentage" className="block text-sm font-medium text-gray-700">Target Profit (%)</label>
-          <input type="number" step="any" id="targetProfitPercentage" name="targetProfitPercentage" value={loanData.targetProfitPercentage} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="targetProfitPercentage" name="targetProfitPercentage" value={loanData.targetProfitPercentage} onChangeNumber={(num) => updateField('targetProfitPercentage', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="maxSellOrders" className="block text-sm font-medium text-gray-700">Maximum Sell Orders</label>
-          <input type="number" step="any" id="maxSellOrders" name="maxSellOrders" value={loanData.maxSellOrders} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="maxSellOrders" name="maxSellOrders" value={loanData.maxSellOrders} onChangeNumber={(num) => updateField('maxSellOrders', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="minSellOrderSize" className="block text-sm font-medium text-gray-700">Minimum Sell Order Size (BTC)</label>
-          <input type="number" step="any" id="minSellOrderSize" name="minSellOrderSize" value={loanData.minSellOrderSize} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="minSellOrderSize" name="minSellOrderSize" value={loanData.minSellOrderSize} onChangeNumber={(num) => updateField('minSellOrderSize', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>
           <label htmlFor="totalTargetProfitPercentage" className="block text-sm font-medium text-gray-700">Total Target Profit (%)</label>
-          <input type="number" step="any" id="totalTargetProfitPercentage" name="totalTargetProfitPercentage" value={loanData.totalTargetProfitPercentage} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+          <NumericInput id="totalTargetProfitPercentage" name="totalTargetProfitPercentage" value={loanData.totalTargetProfitPercentage} onChangeNumber={(num) => updateField('totalTargetProfitPercentage', num)} step="any" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
         </div>
 
         <div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import NumericInput from '../shared/NumericInput';
 
 interface PortfolioSettingsProps {
   allocatedBtc: number;
@@ -57,14 +58,15 @@ const PortfolioSettings: React.FC<PortfolioSettingsProps> = ({
           Allocated BTC
         </label>
         <div className="flex items-center">
-          <input
-            type="number"
+          <NumericInput
+            id="allocatedBtc"
+            name="allocatedBtc"
             value={allocatedBtc}
-            onChange={(e) => { setAllocatedBtc(Math.round(Number(e.target.value))); }}
-            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            min="1"
-            step="1"
+            onChangeNumber={(num) => setAllocatedBtc(num)}
+            min={0}
+            step="any"
             required
+            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <span className="ml-2 text-gray-500">BTC</span>
         </div>
@@ -77,18 +79,16 @@ const PortfolioSettings: React.FC<PortfolioSettingsProps> = ({
           Drawdown from ATH to secure with collateral (%)
         </label>
         <div className="flex items-center">
-          <input
-            type="number"
+          <NumericInput
+            id="drawdownFromAth"
+            name="drawdownFromAth"
             value={drawdownFromAth}
-            onChange={(e) => { 
-              const val = Math.round(Number(e.target.value));
-              if (val >= 1 && val <= 100) { setDrawdownFromAth(val); setLastChanged('drawdown'); }
-            }}
-            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            min="1"
-            max="100"
-            step="1"
+            onChangeNumber={(num) => { const val = Math.round(num); setDrawdownFromAth(val); setLastChanged('drawdown'); }}
+            min={1}
+            max={100}
+            step={1}
             required
+            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <span className="ml-2 text-gray-500">%</span>
         </div>
@@ -102,14 +102,15 @@ const PortfolioSettings: React.FC<PortfolioSettingsProps> = ({
           Absolute liquidation price (CZK)
         </label>
         <div className="flex items-center">
-          <input
-            type="number"
-            value={liquidationPrice ?? ''}
-            onChange={(e) => { setLiquidationPrice(Math.round(Number(e.target.value))); setLastChanged('liquidation'); }}
-            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            min="0"
-            step="1"
+          <NumericInput
+            id="liquidationPrice"
+            name="liquidationPrice"
+            value={liquidationPrice ?? 0}
+            onChangeNumber={(num) => { setLiquidationPrice(Math.round(num)); setLastChanged('liquidation'); }}
+            min={0}
+            step={1}
             required
+            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <span className="ml-2 text-gray-500">CZK</span>
         </div>
@@ -122,18 +123,16 @@ const PortfolioSettings: React.FC<PortfolioSettingsProps> = ({
           LTV (%)
         </label>
         <div className="flex items-center">
-          <input
-            type="number"
+          <NumericInput
+            id="ltvPercent"
+            name="ltvPercent"
             value={ltvPercent}
-            onChange={(e) => { 
-              const val = Math.round(Number(e.target.value));
-              if (val >= 1 && val <= 50) { setLtvPercent(val); setLastChanged('ltv'); }
-            }}
-            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            min="1"
-            max="50"
-            step="1"
+            onChangeNumber={(num) => { const val = Math.round(num); setLtvPercent(val); setLastChanged('ltv'); }}
+            min={1}
+            max={50}
+            step={1}
             required
+            className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <span className="ml-2 text-gray-500">%</span>
         </div>
