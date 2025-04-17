@@ -26,10 +26,6 @@ export const createPortfolioService = (getAccessToken: GetAccessTokenFunction) =
     // Count active loans and get their total amount
     const activeLoans = loansData.filter((loan: Loan) => 
       loan.status === LoanStatus.Active
-      || loan.status === LoanStatus.PartiallyRepaid
-      || loan.status === LoanStatus.PendingBtcPurchase
-      || loan.status === LoanStatus.WaitingForFiat
-      || loan.status === LoanStatus.PendingBtcTransfer
     );
     
     const activeLoanCount = activeLoans.length;

@@ -54,11 +54,7 @@ export const useStatisticsService = () => {
       // Calculate statistics summary
       const totalLoans = loans.length;
       const activeLoans = loans.filter((loan: Loan) => 
-          loan.status === LoanStatus.Active || 
-          loan.status === LoanStatus.PartiallyRepaid ||
-          loan.status === LoanStatus.PendingBtcPurchase ||
-          loan.status === LoanStatus.WaitingForFiat ||
-          loan.status === LoanStatus.PendingBtcTransfer
+          loan.status === LoanStatus.Active
       );
       const activeLoansCzk = activeLoans.reduce((sum: number, loan: Loan) => sum + (loan.loanAmountCzk || 0), 0);
       const totalBtcPurchased = loans.reduce((sum: number, loan: Loan) => sum + (loan.purchasedBtc || 0), 0);
@@ -104,7 +100,7 @@ export const useStatisticsService = () => {
         // Loans up to this month
         const monthLoans = sortedLoans.filter((_, index) => index < (i + 1) * (sortedLoans.length / 6));
         // Aktivní půjčky v daném období
-        const monthActiveLoans = monthLoans.filter(l => l.status === LoanStatus.Active || l.status === LoanStatus.PartiallyRepaid || l.status === LoanStatus.PendingBtcPurchase || l.status === LoanStatus.WaitingForFiat || l.status === LoanStatus.PendingBtcTransfer);
+        const monthActiveLoans = monthLoans.filter(l => l.status === LoanStatus.Active);
         // Volný kolaterál
         const cumulativeCollateral = monthActiveLoans.reduce((sum, loan) => sum + (loan.collateralBtc || 0), 0);
         // Nakoupené BTC

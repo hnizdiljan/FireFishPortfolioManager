@@ -40,14 +40,35 @@ namespace FireFishPortfolioManager.Api.Services
             loan.UserId = userId;
             loan.CurrentBtcPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
             
+            // Use default status of Active for new loans
+            if (loan.Status == default)
+                loan.Status = LoanStatus.Active;
+                
             // Calculate automatic fields: repayment date, amount, fees, collateral, total sent
             loan.RepaymentDate = loan.LoanDate.AddMonths(loan.LoanPeriodMonths);
             loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            
+            // Get user for LTV settings
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            
+            // Set default FireFish fee percent if not specified
+            if (loan.FireFishFeePercent <= 0)
+                loan.FireFishFeePercent = 1.5m; // Default to 1.5%
+                
+            // Calculate FireFish fees in BTC
             loan.FeesBtc = (loan.LoanAmountCzk * loan.FireFishFeePercent / 100m) / loan.CurrentBtcPrice;
-            if (loan.CollateralBtc <= 0)
+            
+            // Calculate collateral based on LTV if not specified
+            if (loan.CollateralBtc <= 0 && user?.LtvPercent > 0)
                 loan.CollateralBtc = loan.LoanAmountCzk / loan.CurrentBtcPrice * (100m / user.LtvPercent);
+                
+            // Calculate total BTC sent
             loan.TotalSentBtc = loan.CollateralBtc + loan.TransactionFeesBtc + loan.FeesBtc;
+            
+            // Set default Bitcoin profit ratio if not specified
+            if (loan.BitcoinProfitRatio <= 0)
+                loan.BitcoinProfitRatio = 50m; // Default to 50%
+                
             loan.RepaymentWithFeesBtc = _calculationService.CalculateRequiredBtcForRepayment(loan, loan.CurrentBtcPrice);
 
             _context.Loans.Add(loan);
@@ -76,26 +97,36 @@ namespace FireFishPortfolioManager.Api.Services
             }
 
             // Update core fields and recalculate automatic values
+            loan.LoanId = loanUpdate.LoanId;
             loan.LoanDate = loanUpdate.LoanDate;
             loan.LoanPeriodMonths = loanUpdate.LoanPeriodMonths;
             loan.RepaymentDate = loan.LoanDate.AddMonths(loan.LoanPeriodMonths);
             loan.LoanAmountCzk = loanUpdate.LoanAmountCzk;
             loan.InterestRate = loanUpdate.InterestRate;
+            loan.FireFishFeePercent = loanUpdate.FireFishFeePercent > 0 ? loanUpdate.FireFishFeePercent : 1.5m;
             loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            
             var currentPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
             loan.CurrentBtcPrice = currentPrice;
-            loan.FireFishFeePercent = loanUpdate.FireFishFeePercent;
-            loan.FeesBtc = (loan.LoanAmountCzk * loan.FireFishFeePercent / 100m) / currentPrice;
+            
+            // Calculate FireFish fees in BTC
+            loan.FeesBtc = loanUpdate.FeesBtc > 0 ? loanUpdate.FeesBtc : 
+                (loan.LoanAmountCzk * loan.FireFishFeePercent / 100m) / currentPrice;
+                
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             loan.TransactionFeesBtc = loanUpdate.TransactionFeesBtc;
-            if (loanUpdate.CollateralBtc <= 0)
-                loan.CollateralBtc = loan.LoanAmountCzk / currentPrice * (100m / user.LtvPercent);
-            else
+            
+            // Update collateral
+            if (loanUpdate.CollateralBtc > 0)
                 loan.CollateralBtc = loanUpdate.CollateralBtc;
+            else if (user?.LtvPercent > 0)
+                loan.CollateralBtc = loan.LoanAmountCzk / currentPrice * (100m / user.LtvPercent);
+                
+            // Recalculate total BTC sent
             loan.TotalSentBtc = loan.CollateralBtc + loan.TransactionFeesBtc + loan.FeesBtc;
             loan.PurchasedBtc = loanUpdate.PurchasedBtc;
             loan.TotalTargetProfitPercentage = loanUpdate.TotalTargetProfitPercentage;
-            loan.BitcoinProfitRatio = loanUpdate.BitcoinProfitRatio;
+            loan.BitcoinProfitRatio = loanUpdate.BitcoinProfitRatio > 0 ? loanUpdate.BitcoinProfitRatio : 50m;
             loan.Status = loanUpdate.Status;
             loan.UpdatedAt = DateTime.UtcNow;
             loan.RepaymentWithFeesBtc = _calculationService.CalculateRequiredBtcForRepayment(loan, loan.CurrentBtcPrice);
@@ -190,12 +221,23 @@ namespace FireFishPortfolioManager.Api.Services
                 // Calculate target price based on total profit percentage
                 var targetPrice = currentBtcPrice * (1 + loan.TotalTargetProfitPercentage / 100m);
                 
+                // Use Bitcoin profit ratio to determine how much BTC to keep
+                decimal btcToSell = requiredBtcForRepayment;
+                decimal btcProfit = loan.PurchasedBtc - requiredBtcForRepayment;
+                
+                // Consider Bitcoin profit ratio: how much of the profit to keep in BTC
+                if (loan.BitcoinProfitRatio > 0 && btcProfit > 0)
+                {
+                    decimal btcToKeep = btcProfit * (loan.BitcoinProfitRatio / 100m);
+                    btcToSell = loan.PurchasedBtc - btcToKeep;
+                }
+                
                 // Simple strategy: one sell order for the required BTC at target price
                 sellOrders.Add(new SellStrategyOrder
                 {
-                    BtcAmount = requiredBtcForRepayment,
+                    BtcAmount = btcToSell,
                     PricePerBtc = targetPrice,
-                    TotalCzk = requiredBtcForRepayment * targetPrice
+                    TotalCzk = btcToSell * targetPrice
                 });
             }
 
@@ -250,16 +292,15 @@ namespace FireFishPortfolioManager.Api.Services
                 user.CoinmateApiKey, 
                 user.CoinmateApiSecret, 
                 loan, 
-                strategy);
+                strategy
+            );
             
             // Add created orders to the context and save changes
             if (createdOrders.Any())
             {
                 _context.SellOrders.AddRange(createdOrders);
-                loan.Status = LoanStatus.Active; // Set status to Active
-                loan.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Successfully submitted {OrderCount} sell orders for loan {LoanId}", createdOrders.Count, loanId);
+                _logger.LogInformation("Created {OrderCount} sell orders for loan {LoanId}", createdOrders.Count, loanId);
             }
             
             return createdOrders;

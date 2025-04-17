@@ -1,27 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoanInput, LoanStatus /*, Loan */ } from '../types/loanTypes';
-import { fetchLoanById, createLoan as apiCreateLoan, updateLoan as apiUpdateLoan } from '../services/loanService';
+import { LoanStatus, LoanInput } from '../types/loanTypes';
+import { fetchLoanById, createLoan, updateLoan } from '../services/loanService';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
+// Initial state for a new loan
 const initialLoanState: LoanInput = {
   loanId: '',
   loanDate: new Date().toISOString().split('T')[0],
-  repaymentDate: new Date().toISOString().split('T')[0],
-  status: LoanStatus.PendingBtcTransfer,
+  loanPeriodMonths: 6,
+  repaymentDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0], 
+  status: LoanStatus.Active,
   loanAmountCzk: 0,
-  interestRate: 0,
+  interestRate: 7, // Default to 7%
+  fireFishFeePercent: 1.5, // This field will be hidden from the UI but kept for backward compatibility
   repaymentAmountCzk: 0,
   feesBtc: 0,
-  transactionFeesBtc: 0,
+  transactionFeesBtc: 0.0001,
   collateralBtc: 0,
   totalSentBtc: 0,
   purchasedBtc: 0,
-  targetProfitPercentage: 0,
-  maxSellOrders: 1,
-  minSellOrderSize: 0.01,
-  totalTargetProfitPercentage: 0,
-  withdrawalWalletAddress: ''
+  totalTargetProfitPercentage: 50,
+  bitcoinProfitRatio: 50
 };
 
 export const useLoanForm = (loanId?: number) => {
@@ -29,9 +30,88 @@ export const useLoanForm = (loanId?: number) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { getAccessToken, userName } = useAuth();
+  const { getAccessToken } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const isEditing = Boolean(loanId);
+  const isUpdatingRef = useRef(false);
+
+  // Calculate derived values whenever relevant inputs change
+  useEffect(() => {
+    // Skip if we're already updating to prevent recursion
+    if (isUpdatingRef.current) return;
+    if (Object.keys(loanData).length === 0) return;
+
+    // Create a copy of current data to update
+    const updatedData = { ...loanData };
+    let hasUpdates = false;
+
+    // 1. Calculate repayment date from loan date and period
+    if (loanData.loanDate && loanData.loanPeriodMonths) {
+      try {
+        const loanDate = new Date(loanData.loanDate);
+        if (!isNaN(loanDate.getTime())) {
+          // Create a new date by making a proper copy of loan date
+          const repaymentDate = new Date(loanDate);
+          // Add the selected number of months
+          repaymentDate.setMonth(loanDate.getMonth() + loanData.loanPeriodMonths);
+          
+          const formattedDate = repaymentDate.toISOString().split('T')[0];
+          if (formattedDate !== loanData.repaymentDate) {
+            updatedData.repaymentDate = formattedDate;
+            hasUpdates = true;
+          }
+        }
+      } catch (e) {
+        console.error("Error calculating repayment date:", e);
+      }
+    }
+
+    // 2. Calculate repayment amount from loan amount and interest rate
+    if (loanData.loanAmountCzk > 0 && loanData.interestRate >= 0) {
+      const interest = loanData.loanAmountCzk * (loanData.interestRate / 100);
+      const repayment = loanData.loanAmountCzk + interest;
+      
+      if (Math.abs(repayment - loanData.repaymentAmountCzk) > 0.001) {
+        updatedData.repaymentAmountCzk = repayment;
+        hasUpdates = true;
+      }
+    }
+
+    // 3. Calculate collateral based on repayment amount and LTV settings if available
+    if (loanData.repaymentAmountCzk > 0 && settings?.ltv && settings.ltv > 0 && settings.currentBtcPrice && settings.currentBtcPrice > 0) {
+      // For collateral, we use repaymentAmountCzk / (ltv/100)
+      // Example: repayment 100k CZK with LTV 50% = 200k CZK in collateral value
+      const collateralCzk = loanData.repaymentAmountCzk / (settings.ltv / 100);
+      // Convert to BTC using current price
+      const collateralBtc = collateralCzk / settings.currentBtcPrice;
+      
+      if (Math.abs(collateralBtc - loanData.collateralBtc) > 0.00000001) {
+        updatedData.collateralBtc = collateralBtc;
+        hasUpdates = true;
+      }
+    }
+
+    // 4. Calculate total BTC sent (collateral + fees + transaction fees)
+    const totalSent = updatedData.collateralBtc + updatedData.feesBtc + updatedData.transactionFeesBtc;
+    if (Math.abs(totalSent - loanData.totalSentBtc) > 0.00000001) {
+      updatedData.totalSentBtc = totalSent;
+      hasUpdates = true;
+    }
+
+    // Only update state if there were actual changes to avoid infinite loops
+    if (hasUpdates) {
+      isUpdatingRef.current = true;
+      setLoanData(updatedData);
+      // Reset flag after update
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 0);
+    }
+  }, [
+    loanData,
+    settings
+  ]);
 
   // Fetch existing loan data if in edit mode
   useEffect(() => {
@@ -40,26 +120,29 @@ export const useLoanForm = (loanId?: number) => {
         setIsLoading(true);
         setError(null);
         try {
-          const existingLoan = await fetchLoanById(getAccessToken, loanId);
-          // Map Loan to LoanInput, handling potential aliases and date formatting
+          const token = await getAccessToken();
+          if (!token) {
+            throw new Error('No authentication token available');
+          }
+          
+          const existingLoan = await fetchLoanById(() => Promise.resolve(token), loanId);
           setLoanData({
-            loanId: existingLoan.loanId,
-            loanDate: existingLoan.loanDate?.split('T')[0] || initialLoanState.loanDate,
-            repaymentDate: existingLoan.repaymentDate?.split('T')[0] || initialLoanState.repaymentDate,
+            loanId: existingLoan.loanId || '',
+            loanDate: existingLoan.loanDate || new Date().toISOString().split('T')[0],
+            loanPeriodMonths: existingLoan.loanPeriodMonths || 6,
+            repaymentDate: existingLoan.repaymentDate || new Date().toISOString().split('T')[0],
             status: existingLoan.status,
             loanAmountCzk: existingLoan.loanAmountCzk || 0,
             interestRate: existingLoan.interestRate || 0,
+            fireFishFeePercent: existingLoan.fireFishFeePercent || 1.5,
             repaymentAmountCzk: existingLoan.repaymentAmountCzk || 0,
-            feesBtc: existingLoan.feesBtc || 0, // TODO: Check alias in Loan type (ffFeesBtc?)
+            feesBtc: existingLoan.feesBtc || 0,
             transactionFeesBtc: existingLoan.transactionFeesBtc || 0,
             collateralBtc: existingLoan.collateralBtc || 0,
             totalSentBtc: existingLoan.totalSentBtc || 0,
             purchasedBtc: existingLoan.purchasedBtc || 0,
-            targetProfitPercentage: existingLoan.targetProfitPercentage || 0,
-            maxSellOrders: existingLoan.maxSellOrders || 1,
-            minSellOrderSize: existingLoan.minSellOrderSize || 0.01,
             totalTargetProfitPercentage: existingLoan.totalTargetProfitPercentage || 0,
-            withdrawalWalletAddress: existingLoan.withdrawalWalletAddress || ''
+            bitcoinProfitRatio: existingLoan.bitcoinProfitRatio || 50
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Failed to load loan data';
@@ -70,14 +153,10 @@ export const useLoanForm = (loanId?: number) => {
         }
       };
       loadLoan();
-    } else {
-        // Reset to initial state if not editing or ID changes to undefined
-        setLoanData(initialLoanState);
     }
   }, [loanId, isEditing, getAccessToken]);
 
-  const updateField = useCallback((field: keyof LoanInput, value: string | number | LoanStatus) => {
-    // Optional: Add validation logic here
+  const updateField = useCallback((field: keyof LoanInput, value: any) => {
     setLoanData(prevData => ({
       ...prevData,
       [field]: value
@@ -88,44 +167,32 @@ export const useLoanForm = (loanId?: number) => {
     setIsSaving(true);
     setError(null);
     try {
-      let finalLoanData = { ...loanData };
-      // Pokusíme se získat userId z access tokenu (pokud je v claims), jinak použijeme userName jako fallback
-      const accessToken = await getAccessToken();
-      let userId = undefined;
-      if (accessToken) {
-        try {
-          const payload = JSON.parse(atob(accessToken.split('.')[1]));
-          userId = payload.oid || payload.sub || payload.userId || payload.preferred_username || undefined;
-        } catch (e) {
-          // ignore, fallback níže
-        }
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error('No authentication token available');
       }
-      if (!userId && userName) {
-        userId = userName;
-      }
-      if (userId) {
-        finalLoanData = { ...finalLoanData, userId };
-      }
+      
+      const tokenFn = () => Promise.resolve(token);
+      
       if (isEditing && loanId) {
-        await apiUpdateLoan(getAccessToken, loanId, finalLoanData);
+        await updateLoan(tokenFn, loanId, loanData);
       } else {
-        await apiCreateLoan(getAccessToken, finalLoanData);
+        await createLoan(tokenFn, loanData);
       }
-      navigate('/loans'); // Navigate back to the list after successful save
-      return true; // Indicate success
+      navigate('/loans'); // Navigate back to the loans list
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save loan';
       setError(message);
       console.error('Error saving loan:', err);
-      return false; // Indicate failure
+      return false;
     } finally {
       setIsSaving(false);
     }
-  }, [isEditing, loanId, loanData, getAccessToken, navigate, userName]);
+  }, [isEditing, loanId, loanData, getAccessToken, navigate]);
 
   return {
     loanData,
-    setLoanData, // Expose setter if direct manipulation is needed (e.g., reset)
     isLoading,
     isSaving,
     error,

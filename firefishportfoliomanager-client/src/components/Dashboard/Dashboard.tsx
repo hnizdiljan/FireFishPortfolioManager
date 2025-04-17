@@ -21,8 +21,8 @@ const Dashboard: React.FC = () => {
   // Use the portfolio summary hook
   const portfolioSummary = usePortfolioSummary();
 
-  // Remove calculations now handled by usePortfolioSummary
-  const activeLoans = loans.filter(l => l.status !== LoanStatus.Repaid);
+  // Filter to only show active loans
+  const activeLoans = loans.filter(l => l.status !== LoanStatus.Closed);
   const totalLoanAmount = activeLoans.reduce((sum, loan) => sum + (loan.loanAmountCzk || 0), 0);
   const totalRepaymentAmount = activeLoans.reduce((sum, loan) => sum + (loan.repaymentAmountCzk || 0), 0);
   const totalCollateralBtc = activeLoans.reduce((sum, loan) => sum + (loan.collateralBtc || 0), 0);

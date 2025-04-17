@@ -1,14 +1,9 @@
 // import { SellStrategy } from './strategyTypes'; // Removed unused import
 
-// Enum corresponding to LoanStatus in backend
+// Simplified two-state loan status
 export enum LoanStatus {
-  PendingBtcTransfer = 0,
-  WaitingForFiat = 1,
-  PendingBtcPurchase = 2,
-  Active = 3,
-  PartiallyRepaid = 4,
-  Repaid = 5,
-  Overdue = 6
+  Active = 0,
+  Closed = 1
 }
 
 // Enum corresponding to SellOrderStatus in backend
@@ -38,27 +33,34 @@ export interface Loan {
   userId: string;
   loanId: string; // Fire Fish Loan ID
   loanDate: string; // Use string for dates
-  repaymentDate: string; // Use string for dates
+  loanPeriodMonths: number; // Period of the loan in months (3, 6, 12, 18)
+  repaymentDate: string; // Use string for dates (calculated from loanDate + loanPeriodMonths)
   status: LoanStatus;
   loanAmountCzk: number;
   interestRate: number;
-  repaymentAmountCzk: number;
-  feesBtc: number;
+  fireFishFeePercent: number; // Default 1.5% but can be overridden
+  repaymentAmountCzk: number; // Calculated from loanAmount + interest
+  feesBtc: number; // Fire Fish Fees in BTC
   transactionFeesBtc: number;
-  collateralBtc: number;
-  totalSentBtc: number;
+  collateralBtc: number; // Calculated based on LTV from settings but can be overridden
+  totalSentBtc: number; // Calculated: Collateral + Transaction Fees + FF Fees
   purchasedBtc: number;
   currentBtcPrice: number;
   repaymentWithFeesBtc: number;
-  targetProfitPercentage: number;
-  maxSellOrders: number;
-  minSellOrderSize: number;
   totalTargetProfitPercentage: number;
-  withdrawalWalletAddress: string;
+  bitcoinProfitRatio: number; // New: % of profit to keep in BTC (0-100)
   createdAt: string; // Use string for dates
   updatedAt: string; // Use string for dates
   sellOrders: SellOrder[];
 }
 
 // Input type for creating/updating loans (adjust based on API expectations)
-export type LoanInput = Omit<Loan, 'id' | 'currentBtcPrice' | 'repaymentWithFeesBtc' | 'createdAt' | 'updatedAt' | 'sellOrders' | 'userId'> & Partial<Pick<Loan, 'userId'>>; 
+export type LoanInput = Omit<Loan, 
+  'id' | 
+  'currentBtcPrice' | 
+  'repaymentWithFeesBtc' | 
+  'createdAt' | 
+  'updatedAt' | 
+  'sellOrders' | 
+  'userId'
+> & Partial<Pick<Loan, 'userId'>>; 

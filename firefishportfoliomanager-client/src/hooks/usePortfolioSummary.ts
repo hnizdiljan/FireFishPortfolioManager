@@ -20,8 +20,8 @@ export const usePortfolioSummary = (): PortfolioSummary | null => {
       return null; // Not enough data to calculate summary
     }
 
-    // Use Repaid status for filtering active loans
-    const activeLoans = loans.filter(l => l.status !== LoanStatus.Repaid);
+    // Use Closed status for filtering active loans
+    const activeLoans = loans.filter(l => l.status !== LoanStatus.Closed);
     const totalLoanAmountCzk = activeLoans.reduce((sum, loan) => sum + (loan.loanAmountCzk || 0), 0);
     // Assuming totalPurchasedBtc should consider *all* loans, not just active
     const totalPurchasedBtc = loans.reduce((sum, loan) => sum + (loan.purchasedBtc || 0), 0); 

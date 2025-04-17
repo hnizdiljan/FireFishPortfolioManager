@@ -4,6 +4,7 @@ import { MsalProvider, AuthenticatedTemplate, UnauthenticatedTemplate } from '@a
 import { PublicClientApplication } from '@azure/msal-browser';
 import { msalConfig } from './authConfig';
 import { AuthProvider } from './context/AuthContext';
+import { SettingsProvider } from './context/SettingsContext';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import LoansPage from './components/Loans/LoansPage';
@@ -22,102 +23,104 @@ function App() {
     <Router>
       <MsalProvider instance={msalInstance}>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={
-              <UnauthenticatedTemplate>
-                <LoginPage />
-              </UnauthenticatedTemplate>
-            } />
-              <Route path="/" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><Dashboard /></Layout>
-                </AuthenticatedTemplate>
+          <SettingsProvider>
+            <Routes>
+              <Route path="/login" element={
                 <UnauthenticatedTemplate>
                   <LoginPage />
                 </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/dashboard" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><Dashboard /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/loans" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><LoansPage /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/loans/new" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><LoanForm /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/loans/:id/edit" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><LoanForm /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/loans/:id/sell-strategy" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><SellStrategyPage /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/settings" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><SettingsPage /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="/statistics" element={
-              <>
-                <AuthenticatedTemplate>
-                  <Layout><StatisticsPage /></Layout>
-                </AuthenticatedTemplate>
-                <UnauthenticatedTemplate>
-                  <LoginPage />
-                </UnauthenticatedTemplate>
-              </>
-            } />
-            
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+              } />
+                <Route path="/" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><Dashboard /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/dashboard" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><Dashboard /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/loans" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><LoansPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/loans/new" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><LoanForm /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/loans/:id/edit" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><LoanForm /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/loans/:id/sell-strategy" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><SellStrategyPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/settings" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><SettingsPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/statistics" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><StatisticsPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </SettingsProvider>
         </AuthProvider>
       </MsalProvider>
     </Router>
