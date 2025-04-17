@@ -45,7 +45,11 @@ namespace FireFishPortfolioManager.Api.Data
             // User configuration
             modelBuilder.Entity<User>()
                 .HasKey(u => u.Id);
-                
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.AllocatedBtc)
+                .HasPrecision(18, 8);
+
             modelBuilder.Entity<User>()
                 .HasMany(u => u.Loans)
                 .WithOne(l => l.User)

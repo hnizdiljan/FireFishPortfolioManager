@@ -60,8 +60,7 @@ namespace FireFishPortfolioManager.Api.Controllers
             // Assuming CoinmateService now gets credentials from configuration
             var currentBtcPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync(); 
             
-            // Zaokrouhlení na celá čísla
-            var allocatedBtc = Math.Round(model.AllocatedBtc, 0);
+            var allocatedBtc = model.AllocatedBtc;
             var drawdownFromAth = Math.Round(model.DrawdownFromAth, 0);
             var absoluteLiquidationPrice = Math.Round(model.AbsoluteLiquidationPrice, 0);
             var ltvPercent = Math.Round(model.LtvPercent, 0);

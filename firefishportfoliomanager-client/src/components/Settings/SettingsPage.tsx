@@ -112,15 +112,11 @@ const SettingsPage: React.FC = () => {
     setSaving(true);
     setMessage(null);
     try {
-      const roundedAllocatedBtc = Math.round(allocatedBtc);
-      const roundedDrawdownFromAth = Math.round(drawdownFromAth);
-      const roundedLiquidationPrice = Math.round(liquidationPrice ?? 0);
-      const roundedLtvPercent = Math.round(ltvPercent);
       const settingsToUpdate = {
-        allocatedBtc: roundedAllocatedBtc,
-        drawdownFromAth: roundedDrawdownFromAth,
-        absoluteLiquidationPrice: roundedLiquidationPrice,
-        ltvPercent: roundedLtvPercent,
+        allocatedBtc,
+        drawdownFromAth: Math.round(drawdownFromAth),
+        absoluteLiquidationPrice: Math.round(liquidationPrice ?? 0),
+        ltvPercent: Math.round(ltvPercent),
       };
       const updatedUser = await updateUserSettings(getAccessToken, settingsToUpdate);
       setSettings(updatedUser);
