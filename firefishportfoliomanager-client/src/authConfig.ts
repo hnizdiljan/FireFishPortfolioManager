@@ -1,6 +1,6 @@
 // Read environment variables for redirect URI and API base URL
 const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI || window.location.origin;
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://localhost:7227";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://firefishportfolioapi.azurewebsites.net";
 
 export const msalConfig = {
   auth: {
