@@ -12,7 +12,6 @@ env:
   AZURE_WEBAPP_NAME: firefish-portfolio-manager   # Název Azure Web App
   NODE_VERSION: '20.x'                            # Verze Node.js
   APP_PATH: 'firefishportfoliomanager-client'     # Cesta ke zdrojáku
-  BUILD_PATH: 'firefishportfoliomanager-client/firefishportfoliomanager-client/build' # Výstupní složka po build
 
 jobs:
   build:
@@ -25,7 +24,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '${{ env.APP_PATH }}/package-lock.json'
 
+      - name: Debug - List directory structure before
+        run: find ${{ env.APP_PATH }} -type d | sort
+        
       - name: Install dependencies
         run: npm ci
         working-directory: ${{ env.APP_PATH }}
@@ -33,20 +37,27 @@ jobs:
       - name: Build React app
         run: npm run build
         working-directory: ${{ env.APP_PATH }}
-
-      - name: List build output
+      
+      - name: Debug - Find build directory
+        run: find ${{ env.APP_PATH }} -name "build" -type d
+      
+      - name: Debug - List contents of build directory
         run: |
-          echo "Obsah složky firefishportfoliomanager-client:"
-          ls -l ${{ env.APP_PATH }}
-          echo "Obsah složky build:"
-          ls -l ${{ env.BUILD_PATH }}
-        continue-on-error: true
+          BUILD_DIR=$(find ${{ env.APP_PATH }} -name "build" -type d | head -n 1)
+          if [ -n "$BUILD_DIR" ]; then
+            echo "Build directory found at: $BUILD_DIR"
+            ls -la $BUILD_DIR
+            echo "BUILD_DIR=$BUILD_DIR" >> $GITHUB_ENV
+          else
+            echo "Build directory not found!"
+            exit 1
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: ${{ env.BUILD_PATH }}
+          path: ${{ env.BUILD_DIR }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -59,7 +70,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: ${{ env.BUILD_PATH }}
+          path: './build'
+
+      - name: List downloaded artifact contents
+        run: ls -la ./build
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -67,4 +81,4 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-          package: ${{ env.BUILD_PATH }} 
+          package: './build'
