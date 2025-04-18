@@ -86,6 +86,22 @@ namespace FireFishPortfolioManager.Api.Data
                 .HasKey(l => l.Id);
 
             modelBuilder.Entity<Loan>()
+                .Property(l => l.CollateralBtc)
+                .HasColumnType("decimal(18,8)");
+            modelBuilder.Entity<Loan>()
+                .Property(l => l.FeesBtc)
+                .HasColumnType("decimal(18,8)");
+            modelBuilder.Entity<Loan>()
+                .Property(l => l.TransactionFeesBtc)
+                .HasColumnType("decimal(18,8)");
+            modelBuilder.Entity<Loan>()
+                .Property(l => l.TotalSentBtc)
+                .HasColumnType("decimal(18,8)");
+            modelBuilder.Entity<Loan>()
+                .Property(l => l.PurchasedBtc)
+                .HasColumnType("decimal(18,8)");
+
+            modelBuilder.Entity<Loan>()
                 .HasMany(l => l.SellOrders)
                 .WithOne(s => s.Loan)
                 .HasForeignKey(s => s.LoanId)

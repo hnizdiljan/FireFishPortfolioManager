@@ -4,6 +4,7 @@ import { LoanStatus, LoanInput } from '../types/loanTypes';
 import { fetchLoanById, createLoan, updateLoan } from '../services/loanService';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { fetchCurrentUser } from '../services/userService';
 
 // Initial state for a new loan
 const initialLoanState: LoanInput = {
@@ -171,13 +172,30 @@ export const useLoanForm = (loanId?: number) => {
       if (!token) {
         throw new Error('No authentication token available');
       }
-      
       const tokenFn = () => Promise.resolve(token);
-      
+      let loanToSave = { ...loanData };
+      // Pokud není userId, načti aktuálního uživatele a nastav userId
+      if (!loanToSave.userId) {
+        const user = await fetchCurrentUser(tokenFn);
+        loanToSave.userId = user.id;
+      }
+      // Zaokrouhli BTC hodnoty na 8 desetinných míst
+      const btcFields: (keyof LoanInput)[] = [
+        'collateralBtc',
+        'feesBtc',
+        'transactionFeesBtc',
+        'totalSentBtc',
+        'purchasedBtc',
+      ];
+      btcFields.forEach(field => {
+        if (typeof loanToSave[field] === 'number') {
+          (loanToSave as any)[field] = Number((loanToSave[field] as number).toFixed(8));
+        }
+      });
       if (isEditing && loanId) {
-        await updateLoan(tokenFn, loanId, loanData);
+        await updateLoan(tokenFn, loanId, loanToSave);
       } else {
-        await createLoan(tokenFn, loanData);
+        await createLoan(tokenFn, loanToSave);
       }
       navigate('/loans'); // Navigate back to the loans list
       return true;

@@ -4,12 +4,15 @@ import { LoanInput, LoanStatus } from '../../types/loanTypes';
 import { useLoanForm } from '../../hooks/useLoanForm';
 import NumericInput from '../shared/NumericInput';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
+import { fetchCurrentUser, fetchInternalBtcPrice } from '../../services/userService';
 
 const LoanForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const numericId = id ? parseInt(id, 10) : undefined;
   const { settings } = useSettings();
+  const { getAccessToken } = useAuth();
 
   const {
     loanData,
@@ -20,6 +23,22 @@ const LoanForm: React.FC = () => {
     updateField,
     saveLoan,
   } = useLoanForm(numericId);
+
+  // Lokální stav pro zobrazení aktuální hodnoty LTV a BTC ceny
+  const [ltvPercent, setLtvPercent] = React.useState<number | null>(null);
+  const [btcPrice, setBtcPrice] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    const fetchLtvAndBtc = async () => {
+      const token = await getAccessToken();
+      if (!token) return;
+      const user = await fetchCurrentUser(() => Promise.resolve(token));
+      const btcPriceData = await fetchInternalBtcPrice(() => Promise.resolve(token));
+      setLtvPercent(user.ltvPercent);
+      setBtcPrice(btcPriceData.priceCzk);
+    };
+    fetchLtvAndBtc();
+  }, [getAccessToken]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -43,6 +62,23 @@ const LoanForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await saveLoan();
+  };
+
+  const handleRecalculateCollateral = async () => {
+    const repaymentAmountCzk = loanData.repaymentAmountCzk;
+    const token = await getAccessToken();
+    if (!token || !repaymentAmountCzk) return;
+    // Získání aktuálního uživatele a ceny BTC
+    const user = await fetchCurrentUser(() => Promise.resolve(token));
+    const btcPriceData = await fetchInternalBtcPrice(() => Promise.resolve(token));
+    const ltv = user.ltvPercent;
+    const price = btcPriceData.priceCzk;
+    setLtvPercent(ltv);
+    setBtcPrice(price);
+    if (!ltv || !price) return;
+    const requiredCollateralCzk = repaymentAmountCzk / (ltv / 100);
+    const collateralBtc = requiredCollateralCzk / price;
+    updateField('collateralBtc', Number(collateralBtc.toFixed(8)));
   };
 
   if (isLoading && isEditing) {
@@ -314,7 +350,8 @@ const LoanForm: React.FC = () => {
 
             <div>
               <label htmlFor="collateralBtc" className="block text-sm font-medium text-gray-700 mb-1">
-                Collateral (BTC) (Auto-calculated)
+                Collateral (BTC)
+                <span className="ml-2 text-xs text-gray-500">(Manual or <button type="button" onClick={handleRecalculateCollateral} className="underline text-blue-600 hover:text-blue-800">Recalculate</button>)</span>
               </label>
               <div className="relative mt-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -324,10 +361,10 @@ const LoanForm: React.FC = () => {
                   id="collateralBtc" 
                   name="collateralBtc" 
                   value={loanData.collateralBtc} 
-                  onChangeNumber={handleNoChange} 
+                  onChangeNumber={(num) => updateField('collateralBtc', num)} 
                   step="any" 
-                  readOnly 
-                  className="block w-full border border-gray-200 rounded-lg shadow-sm py-3 pl-10 pr-4 bg-gray-50 text-gray-700 cursor-not-allowed" 
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-10 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
                   placeholder="0.00000000"
                 />
               </div>
@@ -336,8 +373,7 @@ const LoanForm: React.FC = () => {
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
                 </svg>
                 <p className="text-xs text-gray-600">
-                  Auto-calculated based on repayment amount and LTV ({settings?.ltv || 70}%). 
-                  Current BTC price: {settings?.currentBtcPrice?.toLocaleString() || 'N/A'} CZK.
+                  You can enter manually or recalculate based on repayment amount, LTV ({ltvPercent ?? settings?.ltv ?? 70}%) and current BTC price ({btcPrice?.toLocaleString() ?? settings?.currentBtcPrice?.toLocaleString() ?? 'N/A'} CZK).
                 </p>
               </div>
             </div>
