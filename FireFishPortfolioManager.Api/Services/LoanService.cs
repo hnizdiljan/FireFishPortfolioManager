@@ -46,7 +46,9 @@ namespace FireFishPortfolioManager.Api.Services
                 
             // Calculate automatic fields: repayment date, amount, fees, collateral, total sent
             loan.RepaymentDate = loan.LoanDate.AddMonths(loan.LoanPeriodMonths);
-            loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            var days = (loan.RepaymentDate - loan.LoanDate).Days;
+            var interestFactor = 1 + ((loan.InterestRate / 100m) * days / 365m);
+            loan.RepaymentAmountCzk = loan.LoanAmountCzk * interestFactor;
             
             // Get user for LTV settings
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -104,7 +106,9 @@ namespace FireFishPortfolioManager.Api.Services
             loan.LoanAmountCzk = loanUpdate.LoanAmountCzk;
             loan.InterestRate = loanUpdate.InterestRate;
             loan.FireFishFeePercent = loanUpdate.FireFishFeePercent > 0 ? loanUpdate.FireFishFeePercent : 1.5m;
-            loan.RepaymentAmountCzk = loan.LoanAmountCzk * (1 + loan.InterestRate / 100m);
+            var daysUpdate = (loan.RepaymentDate - loan.LoanDate).Days;
+            var interestFactorUpdate = 1 + ((loan.InterestRate / 100m) * daysUpdate / 365m);
+            loan.RepaymentAmountCzk = loan.LoanAmountCzk * interestFactorUpdate;
             
             var currentPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
             loan.CurrentBtcPrice = currentPrice;

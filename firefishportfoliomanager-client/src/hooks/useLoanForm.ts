@@ -36,6 +36,7 @@ export const useLoanForm = (loanId?: number) => {
   const navigate = useNavigate();
   const isEditing = Boolean(loanId);
   const isUpdatingRef = useRef(false);
+  const prevLoanPeriodRef = useRef<number>(initialLoanState.loanPeriodMonths);
 
   // Calculate derived values whenever relevant inputs change
   useEffect(() => {
@@ -44,10 +45,15 @@ export const useLoanForm = (loanId?: number) => {
     if (Object.keys(loanData).length === 0) return;
 
     // Create a copy of current data to update
-    const updatedData = { ...loanData };
+    let updatedData = { ...loanData };
     let hasUpdates = false;
+    
+    // Track if loan period has changed
+    const loanPeriodChanged = prevLoanPeriodRef.current !== loanData.loanPeriodMonths;
+    prevLoanPeriodRef.current = loanData.loanPeriodMonths;
 
     // 1. Calculate repayment date from loan date and period
+    let newRepaymentDate = loanData.repaymentDate;
     if (loanData.loanDate && loanData.loanPeriodMonths) {
       try {
         const loanDate = new Date(loanData.loanDate);
@@ -56,10 +62,10 @@ export const useLoanForm = (loanId?: number) => {
           const repaymentDate = new Date(loanDate);
           // Add the selected number of months
           repaymentDate.setMonth(loanDate.getMonth() + loanData.loanPeriodMonths);
-          
           const formattedDate = repaymentDate.toISOString().split('T')[0];
           if (formattedDate !== loanData.repaymentDate) {
             updatedData.repaymentDate = formattedDate;
+            newRepaymentDate = formattedDate;
             hasUpdates = true;
           }
         }
@@ -69,11 +75,27 @@ export const useLoanForm = (loanId?: number) => {
     }
 
     // 2. Calculate repayment amount from loan amount and interest rate
-    if (loanData.loanAmountCzk > 0 && loanData.interestRate >= 0) {
-      const interest = loanData.loanAmountCzk * (loanData.interestRate / 100);
-      const repayment = loanData.loanAmountCzk + interest;
+    // Always use current loanDate and newRepaymentDate (which may have just been recalculated)
+    if (loanData.loanAmountCzk > 0 && loanData.interestRate >= 0 && loanData.loanDate && newRepaymentDate) {
+      // calculate days difference ignoring timezone offsets
+      const loanDateObj = new Date(loanData.loanDate);
+      const repaymentDateObj = new Date(newRepaymentDate);
+      const utcLoanDate = Date.UTC(
+        loanDateObj.getFullYear(),
+        loanDateObj.getMonth(),
+        loanDateObj.getDate()
+      );
+      const utcRepaymentDate = Date.UTC(
+        repaymentDateObj.getFullYear(),
+        repaymentDateObj.getMonth(),
+        repaymentDateObj.getDate()
+      );
+      const days = Math.max(1, Math.floor((utcRepaymentDate - utcLoanDate) / (1000 * 60 * 60 * 24)));
+      const interestFactor = 1 + ((loanData.interestRate / 100) * days / 365);
+      const repayment = loanData.loanAmountCzk * interestFactor;
       
-      if (Math.abs(repayment - loanData.repaymentAmountCzk) > 0.001) {
+      // Force update repayment if loan period changed
+      if (loanPeriodChanged || Math.abs(repayment - loanData.repaymentAmountCzk) > 0.001) {
         updatedData.repaymentAmountCzk = repayment;
         hasUpdates = true;
       }
