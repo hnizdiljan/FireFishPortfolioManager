@@ -34,7 +34,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { getAccessToken, userName } = useAuth();
+  const { userName } = useAuth();
 
   // Fetch settings from API or localStorage on component mount
   useEffect(() => {
@@ -90,7 +90,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     loadSettings();
-  }, [userName]);
+  }, [userName, settings]);
 
   // Update settings
   const updateSettings = async (newSettings: Partial<UserSettings>): Promise<boolean> => {
