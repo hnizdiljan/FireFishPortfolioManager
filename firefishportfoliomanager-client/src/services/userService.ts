@@ -4,9 +4,6 @@ import { UserDto, UserSettingsUpdateModel, BtcPriceModel } from "../types/userTy
 // Typ pro funkci, která umí získat token
 type GetAccessTokenFunction = () => Promise<string | null>;
 
-// Base URL for API calls - not used for CoinGecko
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:7227';
-
 /**
  * Fetch current user data
  * @param getAccessToken Function to retrieve the access token

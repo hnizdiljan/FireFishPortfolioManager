@@ -1,4 +1,4 @@
-name: Deploy .NET API to Azure App Service
+name: Backend - .NET API to Azure App Service CI/CD
 
 on:
   push:
