@@ -12,7 +12,6 @@ env:
   AZURE_WEBAPP_NAME: firefish-portfolio-manager   # Název Azure Web App
   NODE_VERSION: '20.x'                            # Verze Node.js
   APP_PATH: 'firefishportfoliomanager-client'     # Cesta ke zdrojáku
-  BUILD_PATH: 'firefishportfoliomanager-client/build'
 
 jobs:
   build:
@@ -54,14 +53,14 @@ jobs:
         run: |
           echo "--- Content of ${{ env.APP_PATH }} after build ---"
           ls -la ${{ env.APP_PATH }}
-          echo "--- Content of expected build path (${{ env.BUILD_PATH }}) ---"
-          ls -la ${{ env.BUILD_PATH }} || echo "Build directory ${{ env.BUILD_PATH }} not found!"
+          echo "--- Content of expected build path (${{ env.APP_PATH }}/build) ---"
+          ls -la ${{ env.APP_PATH }}/build || echo "Build directory ${{ env.APP_PATH }}/build not found!"
       
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: ${{ env.BUILD_PATH }}
+          path: ${{ env.APP_PATH }}/build
 
   deploy:
     runs-on: ubuntu-latest
