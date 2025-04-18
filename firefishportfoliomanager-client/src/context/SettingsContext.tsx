@@ -42,9 +42,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLoading(true);
       try {
         // Try to load from localStorage first (for quick load)
+        let loadedSettings: UserSettings | null = null;
         const storedSettings = localStorage.getItem('userSettings');
         if (storedSettings) {
-          setSettings(JSON.parse(storedSettings));
+          loadedSettings = JSON.parse(storedSettings);
+          setSettings(loadedSettings);
         }
 
         // Then try to get from API (to ensure we have the latest)
@@ -52,13 +54,15 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           // TODO: Implement API call to get user settings
           // const response = await fetchUserSettings(getAccessToken, userName);
           // if (response) {
+          //   loadedSettings = response;
           //   setSettings(response);
           //   localStorage.setItem('userSettings', JSON.stringify(response));
           // }
         }
 
         // If no settings found, use defaults
-        if (!settings) {
+        if (!loadedSettings) {
+          loadedSettings = defaultSettings;
           setSettings(defaultSettings);
           localStorage.setItem('userSettings', JSON.stringify(defaultSettings));
         }
@@ -90,7 +94,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     loadSettings();
-  }, [userName, settings]);
+  }, [userName]);
 
   // Update settings
   const updateSettings = async (newSettings: Partial<UserSettings>): Promise<boolean> => {
