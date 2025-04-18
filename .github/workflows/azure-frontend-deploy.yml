@@ -34,6 +34,14 @@ jobs:
         run: npm run build
         working-directory: ${{ env.APP_PATH }}
 
+      - name: List build output
+        run: |
+          echo "Obsah složky firefishportfoliomanager-client:"
+          ls -l ${{ env.APP_PATH }}
+          echo "Obsah složky build:"
+          ls -l ${{ env.BUILD_PATH }}
+        continue-on-error: true
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
