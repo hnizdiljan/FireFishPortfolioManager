@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -9,9 +7,8 @@ services:
       - "7227:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db;Database=FireFishDB;User=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;
-    depends_on:
-      - db
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=tcp:firefish-sql-server.database.windows.net,1433;Database=FireFishDB;User ID=serveradmin;Password=ComplexPassword123!;Encrypt=true;Connection Timeout=30;
     networks:
       - firefish-network
 
@@ -24,25 +21,10 @@ services:
     depends_on:
       - api
     environment:
-      - REACT_APP_API_URL=http://localhost:7227
-    networks:
-      - firefish-network
-
-  db:
-    image: mcr.microsoft.com/mssql/server:2019-latest
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrongPassword123!
-    ports:
-      - "1433:1433"
-    volumes:
-      - firefish-db-data:/var/opt/mssql
+      - REACT_APP_API_BASE_URL=/api
     networks:
       - firefish-network
 
 networks:
   firefish-network:
     driver: bridge
-
-volumes:
-  firefish-db-data:

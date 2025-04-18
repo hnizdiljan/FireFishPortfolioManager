@@ -13,7 +13,7 @@ RUN npm install
 COPY firefishportfoliomanager-client/ ./
 
 # Nastavení API URL pro produkční build
-ENV REACT_APP_API_URL=http://localhost:7227
+ENV REACT_APP_API_BASE_URL=
 
 # Build aplikace
 RUN npm run build
