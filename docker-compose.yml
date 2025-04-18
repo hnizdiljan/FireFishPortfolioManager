@@ -7,6 +7,7 @@ services:
       - "7227:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Server=tcp:firefish-sql-server.database.windows.net,1433;Database=FireFishDB;User ID=serveradmin;Password=ComplexPassword123!;Encrypt=true;Connection Timeout=30;
     networks:
       - firefish-network
@@ -20,7 +21,7 @@ services:
     depends_on:
       - api
     environment:
-      - REACT_APP_API_URL=http://localhost:7227
+      - REACT_APP_API_BASE_URL=/api
     networks:
       - firefish-network
 
