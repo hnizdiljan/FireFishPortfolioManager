@@ -12,7 +12,6 @@ env:
   AZURE_WEBAPP_NAME: firefish-portfolio-manager   # Název Azure Web App
   NODE_VERSION: '20.x'                            # Verze Node.js
   APP_PATH: 'firefishportfoliomanager-client'     # Cesta ke zdrojáku
-  BUILD_PATH: 'firefishportfoliomanager-client/build'  # Správná cesta k build složce
 
 jobs:
   build:
@@ -28,22 +27,35 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '${{ env.APP_PATH }}/package-lock.json'
 
-      - name: Debug - List directory structure before
-        run: find ${{ env.APP_PATH }} -type d | sort
+      - name: Debug - List directory structure before install
+        run: |
+          pwd
+          ls -la
+          echo "--- Content of ${{ env.APP_PATH }} before install ---"
+          ls -la ${{ env.APP_PATH }}
         
       - name: Install dependencies
         run: npm ci
         working-directory: ${{ env.APP_PATH }}
 
+      - name: Debug - List directory structure after install
+        run: |
+          echo "--- Content of ${{ env.APP_PATH }} after install ---"
+          ls -la ${{ env.APP_PATH }}
+
       - name: Build React app
-        run: npm run build
+        run: |
+          npm run build
+          echo "Build command finished with exit code $?"
         working-directory: ${{ env.APP_PATH }}
       
-      - name: List contents of build directory
+      - name: Debug - List directory structure AFTER build
         run: |
-          echo "Obsah build složky:"
-          ls -la ${{ env.BUILD_PATH }}
-
+          echo "--- Content of ${{ env.APP_PATH }} after build ---"
+          ls -la ${{ env.APP_PATH }}
+          echo "--- Content of expected build path (${{ env.BUILD_PATH }}) ---"
+          ls -la ${{ env.BUILD_PATH }} || echo "Build directory ${{ env.BUILD_PATH }} not found!"
+      
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
