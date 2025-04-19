@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "FireFishPortfolioManager_Functions": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7126",
+      "launchBrowser": false
+    }
+  }
+}
