@@ -1,9 +1,9 @@
-using FireFishPortfolioManager.Api.Data;
-using FireFishPortfolioManager.Api.Models;
+using FireFishPortfolioManager.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using User = FireFishPortfolioManager.Data.User;
 
 namespace FireFishPortfolioManager.Api.Services
 {
@@ -42,10 +42,12 @@ namespace FireFishPortfolioManager.Api.Services
                 user = new User
                 {
                     Id = objectId,
-                    Name = name,
-                    Email = email,
+                    Name = name ?? string.Empty,
+                    Email = email ?? string.Empty,
                     // Set default values; these will be updated during onboarding
-                    AllocatedBtc = 0
+                    AllocatedBtc = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
 
                 _context.Users.Add(user);
@@ -58,12 +60,12 @@ namespace FireFishPortfolioManager.Api.Services
                 bool updated = false;
                 if (user.Name != name)
                 {
-                    user.Name = name;
+                    user.Name = name ?? string.Empty;
                     updated = true;
                 }
                 if (user.Email != email)
                 {
-                    user.Email = email;
+                    user.Email = email ?? string.Empty;
                     updated = true;
                 }
                 

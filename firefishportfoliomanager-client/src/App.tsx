@@ -13,6 +13,8 @@ import SellStrategyPage from './components/Loans/SellStrategyPage';
 import SettingsPage from './components/Settings/SettingsPage';
 import StatisticsPage from './components/Statistics/StatisticsPage';
 import LoginPage from './components/Auth/LoginPage';
+import SellOrdersPage from './components/Loans/SellOrdersPage';
+import EditExitStrategyPage from './components/Loans/EditExitStrategyPage';
 import './App.css';
 
 // Inicializace MSAL
@@ -89,6 +91,28 @@ function App() {
                 <>
                   <AuthenticatedTemplate>
                     <Layout><SellStrategyPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/loans/:id/exit-strategy" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><EditExitStrategyPage /></Layout>
+                  </AuthenticatedTemplate>
+                  <UnauthenticatedTemplate>
+                    <LoginPage />
+                  </UnauthenticatedTemplate>
+                </>
+              } />
+              
+              <Route path="/sellorders" element={
+                <>
+                  <AuthenticatedTemplate>
+                    <Layout><SellOrdersPage /></Layout>
                   </AuthenticatedTemplate>
                   <UnauthenticatedTemplate>
                     <LoginPage />

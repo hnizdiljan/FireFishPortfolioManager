@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using FireFishPortfolioManager.Data;
 
 namespace FireFishPortfolioManager.Api.Services
 {
@@ -194,13 +195,107 @@ namespace FireFishPortfolioManager.Api.Services
             var parts = apiKey.Split('-');
             return parts.Length > 0 ? parts[0] : "UNKNOWN_CLIENT_ID"; // Adjust logic as needed
         } 
+
+        public async Task<bool> CancelSellOrderAsync(string clientId, string apiKey, string apiSecret, string coinmateOrderId)
+        {
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret) || string.IsNullOrEmpty(coinmateOrderId))
+                return false;
+            try
+            {
+                var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                var parameters = new Dictionary<string, string>
+                {
+                    { "clientId", clientId },
+                    { "orderId", coinmateOrderId },
+                    { "nonce", nonce },
+                };
+                var message = string.Join("", parameters.Values);
+                var signature = CreateHmacSignature(message, apiSecret);
+                var content = new FormUrlEncodedContent(new Dictionary<string, string>(parameters)
+                {
+                    { "signature", signature }
+                });
+                var request = new HttpRequestMessage
+                {
+                    Method = HttpMethod.Post,
+                    RequestUri = new Uri($"{ApiBaseUrl}cancelOrder"),
+                    Content = content,
+                    Headers = { { "API-Key", apiKey } }
+                };
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                // Assume success if no error thrown
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling sell order {OrderId} on Coinmate", coinmateOrderId);
+                return false;
+            }
+        }
+
+        public async Task<SellOrderStatus?> GetSellOrderStatusAsync(string clientId, string apiKey, string apiSecret, string coinmateOrderId)
+        {
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret) || string.IsNullOrEmpty(coinmateOrderId))
+                return null;
+            try
+            {
+                var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                var parameters = new Dictionary<string, string>
+                {
+                    { "clientId", clientId },
+                    { "orderId", coinmateOrderId },
+                    { "nonce", nonce },
+                };
+                var message = string.Join("", parameters.Values);
+                var signature = CreateHmacSignature(message, apiSecret);
+                var content = new FormUrlEncodedContent(new Dictionary<string, string>(parameters)
+                {
+                    { "signature", signature }
+                });
+                var request = new HttpRequestMessage
+                {
+                    Method = HttpMethod.Post,
+                    RequestUri = new Uri($"{ApiBaseUrl}orderStatus"),
+                    Content = content,
+                    Headers = { { "API-Key", apiKey } }
+                };
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                // Parse response and map to SellOrderStatus
+                var json = JsonDocument.Parse(responseContent);
+                var root = json.RootElement;
+                if (root.TryGetProperty("data", out var data))
+                {
+                    var statusStr = data.GetProperty("status").GetString();
+                    // Map Coinmate status to SellOrderStatus
+                    switch (statusStr)
+                    {
+                        case "OPEN": return SellOrderStatus.Submitted;
+                        case "PARTIALLY_FILLED": return SellOrderStatus.PartiallyFilled;
+                        case "FILLED": return SellOrderStatus.Completed;
+                        case "CANCELLED": return SellOrderStatus.Cancelled;
+                        case "FAILED": return SellOrderStatus.Failed;
+                        default: return null;
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting status for sell order {OrderId} on Coinmate", coinmateOrderId);
+                return null;
+            }
+        }
     }
 
     // Response model classes for Coinmate API
     public class CoinmateTickerResponse
     {
         public bool Success { get; set; }
-        public CoinmateTickerData Data { get; set; }
+        public CoinmateTickerData? Data { get; set; }
     }
 
     public class CoinmateTickerData
@@ -216,11 +311,11 @@ namespace FireFishPortfolioManager.Api.Services
     public class CoinmateSellOrderResponse
     {
         public bool Success { get; set; }
-        public CoinmateSellOrderData Data { get; set; }
+        public CoinmateSellOrderData? Data { get; set; }
     }
 
     public class CoinmateSellOrderData
     {
-        public string Id { get; set; }
+        public required string Id { get; set; }
     }
 }

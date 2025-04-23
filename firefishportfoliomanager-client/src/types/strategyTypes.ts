@@ -1,15 +1,4 @@
-export interface SellStrategyOrder {
-  btcAmount: number;
-  pricePerBtc: number;
-  totalCzk: number;
-}
+import type { components } from '../api-types';
 
-export interface SellStrategy {
-  loanId: number;
-  currentBtcPriceCzk: number;
-  targetSellPriceCzk: number;
-  btcToSellForRepayment: number;
-  remainingBtcProfit: number;
-  isViable: boolean;
-  sellOrders: SellStrategyOrder[];
-} 
+export type SellStrategy = components["schemas"]["SellStrategy"];
+export type SellStrategyOrder = components["schemas"]["SellStrategyOrder"];

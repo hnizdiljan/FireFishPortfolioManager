@@ -1,9 +1,7 @@
-import { LoanStatus } from '../types/loanTypes';
-
 // Status display properties
-export const statusDisplay: { [key in LoanStatus]: { text: string; color?: string } } = {
-  [LoanStatus.Active]: { text: 'Active', color: 'bg-green-100 text-green-800' },
-  [LoanStatus.Closed]: { text: 'Closed', color: 'bg-gray-100 text-gray-800' },
+export const statusDisplay = {
+  Active: { text: 'Active', color: 'bg-green-100 text-green-800' },
+  Closed: { text: 'Closed', color: 'bg-gray-100 text-gray-800' },
 };
 
 // Format currency as CZK

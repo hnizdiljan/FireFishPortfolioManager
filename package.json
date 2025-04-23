@@ -1,5 +1,10 @@
 {
   "dependencies": {
+    "@mui/icons-material": "^7.0.2",
     "lightweight-charts": "^5.0.5"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.6.1",
+    "openapi-typescript-codegen": "^0.29.0"
   }
 }

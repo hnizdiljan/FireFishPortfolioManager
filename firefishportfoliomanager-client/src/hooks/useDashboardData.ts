@@ -6,9 +6,9 @@ import { fetchLoans as apiFetchLoans } from '../services/loanService'; // Alias 
 import { useAuth } from '../context/AuthContext';
 
 interface DashboardData {
-  user: UserDto | null;
+  user: UserDto;
   loans: Loan[];
-  btcPrice: number | null;
+  btcPrice: number;
   // Můžeme přidat další odvozené/vypočítané hodnoty zde, pokud se často používají
   // Například:
   // activeLoans: Loan[];
@@ -17,9 +17,9 @@ interface DashboardData {
 
 export const useDashboardData = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData>({ 
-    user: null, 
+    user: {} as UserDto, 
     loans: [], 
-    btcPrice: null 
+    btcPrice: 0 
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,15 +36,13 @@ export const useDashboardData = () => {
         apiFetchLoans(tokenGetter),
       ]);
 
-      // Pokud chceš cenu BTC, můžeš ji získat z loanů nebo z API /api/User/btc-price
-      // Zde nastavíme btcPrice na null (nebo např. průměr z loanů)
-      const btcPrices = loansData.map(l => l.currentBtcPrice).filter(p => typeof p === 'number' && !isNaN(p));
-      const btcPrice = btcPrices.length > 0 ? btcPrices.reduce((a, b) => a + b, 0) / btcPrices.length : null;
+      // Zde můžeš získat cenu BTC z API nebo settings, pokud je potřeba
+      const btcPrice = 0;
 
       setDashboardData({
         user: userData,
         loans: loansData,
-        btcPrice: btcPrice,
+        btcPrice: btcPrice ?? 0,
       });
 
     } catch (err) {
@@ -52,7 +50,7 @@ export const useDashboardData = () => {
       setError(message);
       console.error('Error loading dashboard data:', err);
       // Reset data on error?
-      setDashboardData({ user: null, loans: [], btcPrice: null }); 
+      setDashboardData({ user: {} as UserDto, loans: [], btcPrice: 0 }); 
     } finally {
       setIsLoading(false);
     }

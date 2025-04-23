@@ -7,6 +7,7 @@ namespace FireFishPortfolioManager.Data
         public PortfolioDbContext(DbContextOptions<PortfolioDbContext> options) : base(options) { }
 
         public DbSet<CurrencyPairPriceHistory> CurrencyPairPriceHistories { get; set; }
+        public DbSet<CurrentBtcCzkPrice> CurrentBtcCzkPrices { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

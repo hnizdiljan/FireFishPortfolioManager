@@ -8,6 +8,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@heroicons/react": "^2.0.18",
+    "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.14.20",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -29,7 +30,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "generate:api": "openapi-typescript http://localhost:7227/swagger/v1/swagger.json --output src/api-types.ts"
   },
   "eslintConfig": {
     "extends": [

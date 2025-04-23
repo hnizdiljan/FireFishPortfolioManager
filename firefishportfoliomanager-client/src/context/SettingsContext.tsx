@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { fetchInternalBtcPrice } from '../services/userService';
 
 // Define the shape of user settings
 export interface UserSettings {
@@ -34,7 +35,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { userName } = useAuth();
+  const { userName, getAccessToken } = useAuth();
 
   // Fetch settings from API or localStorage on component mount
   useEffect(() => {
@@ -67,23 +68,44 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           localStorage.setItem('userSettings', JSON.stringify(defaultSettings));
         }
 
-        // Fetch current BTC price (this should be moved to a separate service)
+        // Fetch current BTC price from internal API
         try {
-          const response = await fetch('https://api.coinmate.io/api/ticker?currencyPair=BTC_CZK');
-          const data = await response.json();
-          if (data.data?.last) {
-            const btcPrice = parseFloat(data.data.last);
-            setSettings(prev => {
-              const updatedSettings = { 
-                ...prev, 
-                currentBtcPrice: btcPrice 
-              } as UserSettings;
-              localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
-              return updatedSettings;
-            });
+          if (getAccessToken) {
+            const token = await getAccessToken();
+            if (token) {
+              const btcPriceResult = await fetchInternalBtcPrice(async () => token);
+              if (btcPriceResult && typeof btcPriceResult.priceCzk === 'number') {
+                setSettings(prev => {
+                  const updatedSettings = {
+                    ...prev,
+                    currentBtcPrice: btcPriceResult.priceCzk
+                  } as UserSettings;
+                  localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+                  return updatedSettings;
+                });
+              }
+            } else {
+              // Pokud není token, neaktualizuj cenu a nehlásí error
+              setSettings(prev => {
+                const updatedSettings = {
+                  ...prev,
+                  currentBtcPrice: 0
+                } as UserSettings;
+                localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+                return updatedSettings;
+              });
+            }
           }
         } catch (err) {
-          console.error('Failed to fetch BTC price:', err);
+          console.error('Failed to fetch BTC price from internal API:', err);
+          setSettings(prev => {
+            const updatedSettings = {
+              ...prev,
+              currentBtcPrice: 0
+            } as UserSettings;
+            localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+            return updatedSettings;
+          });
         }
       } catch (err) {
         console.error('Error loading settings:', err);
@@ -94,7 +116,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     loadSettings();
-  }, [userName]);
+  }, [userName, getAccessToken]);
 
   // Update settings
   const updateSettings = async (newSettings: Partial<UserSettings>): Promise<boolean> => {

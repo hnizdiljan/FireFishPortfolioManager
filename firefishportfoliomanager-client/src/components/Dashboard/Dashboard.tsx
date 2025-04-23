@@ -4,7 +4,6 @@ import { PortfolioSummaryRow } from './PortfolioSummaryComponents';
 import { UpcomingRepayment, RecentLoans } from './DashboardComponents';
 import ErrorBoundary from '../shared/ErrorBoundary';
 import { useAuth } from '../../context/AuthContext';
-import { LoanStatus } from '../../types/loanTypes';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { statusDisplay } from '../../utils/loanUtils';
 import { usePortfolioSummary } from '../../hooks/usePortfolioSummary';
@@ -22,11 +21,11 @@ const Dashboard: React.FC = () => {
   const portfolioSummary = usePortfolioSummary();
 
   // Filter to only show active loans
-  const activeLoans = loans.filter(l => l.status !== LoanStatus.Closed);
-  const totalLoanAmount = activeLoans.reduce((sum, loan) => sum + (loan.loanAmountCzk || 0), 0);
-  const totalRepaymentAmount = activeLoans.reduce((sum, loan) => sum + (loan.repaymentAmountCzk || 0), 0);
-  const totalCollateralBtc = activeLoans.reduce((sum, loan) => sum + (loan.collateralBtc || 0), 0);
-  const totalPurchasedBtc = activeLoans.reduce((sum, loan) => sum + (loan.purchasedBtc || 0), 0);
+  const activeLoans = loans.filter(l => l.status !== 'Closed');
+  const totalLoanAmount = activeLoans.reduce((sum, loan) => sum + loan.loanAmountCzk, 0);
+  const totalRepaymentAmount = activeLoans.reduce((sum, loan) => sum + loan.repaymentAmountCzk, 0);
+  const totalCollateralBtc = activeLoans.reduce((sum, loan) => sum + loan.collateralBtc, 0);
+  const totalPurchasedBtc = activeLoans.reduce((sum, loan) => sum + (loan.purchasedBtc ?? 0), 0);
   const collateralValue = btcPrice ? totalCollateralBtc * btcPrice : 0;
   const purchasedValue = btcPrice ? totalPurchasedBtc * btcPrice : 0;
   const nextRepayment = activeLoans.length > 0 
