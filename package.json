@@ -4,6 +4,7 @@
     "lightweight-charts": "^5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "openapi-typescript": "^7.6.1",
     "openapi-typescript-codegen": "^0.29.0"
   }
