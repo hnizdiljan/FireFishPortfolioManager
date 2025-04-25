@@ -40,25 +40,42 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
   // Načtení existující strategie
   useEffect(() => {
     setLoading(true);
+    setError(null);
+    setSuccess(false);
     fetchExitStrategy(getAccessToken, loan.id)
       .then((data: ExitStrategyApiResponse | null) => {
+        console.log('Načtená strategie z API:', data); // Logování pro debug
         if (!data) return;
-        if (data.Type === 'HODL') setStrategyType('HODL');
-        if (data.Type === 'CustomLadder') {
+        // Fallback pro různé varianty názvu typu
+        const strategyApiType = (data as any).Type || (data as any).type;
+        if (!strategyApiType) return;
+        if (strategyApiType === 'HODL') setStrategyType('HODL');
+        if (strategyApiType === 'CustomLadder') {
           setStrategyType('CustomLadder');
           setCustomLadder({ ...data, Orders: data.Orders?.map((o: any) => ({ ...o })) || [] });
         }
-        if (data.Type === 'SmartDistribution') {
+        if (strategyApiType === 'SmartDistribution') {
+          const targetProfitPercent = (data.TargetProfitPercent !== undefined)
+            ? data.TargetProfitPercent
+            : (data as any).targetProfitPercent;
+          const orderCount = (data.OrderCount !== undefined)
+            ? data.OrderCount
+            : (data as any).orderCount;
+          const btcProfitRatioPercent = (data.BtcProfitRatioPercent !== undefined)
+            ? data.BtcProfitRatioPercent
+            : (data as any).btcProfitRatioPercent;
           setStrategyType('SmartDistribution');
           setSmartDist({
             Type: 'SmartDistribution',
-            TargetProfitPercent: data.TargetProfitPercent?.toString() ?? '',
-            OrderCount: data.OrderCount?.toString() ?? '',
-            BtcProfitRatioPercent: data.BtcProfitRatioPercent?.toString() ?? '',
+            TargetProfitPercent: targetProfitPercent?.toString() ?? '',
+            OrderCount: orderCount?.toString() ?? '',
+            BtcProfitRatioPercent: btcProfitRatioPercent?.toString() ?? '',
           });
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Chyba při načítání strategie:', err);
+      })
       .finally(() => setLoading(false));
   }, [loan.id, getAccessToken]);
 
@@ -142,99 +159,105 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
   };
 
   return (
-    <form onSubmit={handleSave}>
-      <Typography variant="h6" gutterBottom>Exit strategie</Typography>
-      <Box mb={2}>
-        {STRATEGY_TYPES.map(type => (
-          <label key={type.value} style={{ marginRight: 24 }}>
-            <Radio
-              checked={strategyType === type.value}
-              onChange={handleTypeChange}
-              value={type.value}
-              name="strategyType"
-              color="primary"
-            />
-            {type.label}
-          </label>
-        ))}
+    loading ? (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
+        <Typography variant="body1">Načítám strategii...</Typography>
       </Box>
-      {strategyType === 'CustomLadder' && (
+    ) : (
+      <form onSubmit={handleSave}>
+        <Typography variant="h6" gutterBottom>Exit strategie</Typography>
         <Box mb={2}>
-          <Typography variant="subtitle1">Sell ordery</Typography>
-          {customLadder.Orders.map((order, idx) => (
-            <Grid container spacing={1} alignItems="center" key={idx}>
-              <Grid item xs={5}>
-                <TextField
-                  label="Cílová cena (CZK)"
-                  type="number"
-                  value={order.TargetPriceCzk}
-                  onChange={e => handleCustomOrderChange(idx, 'TargetPriceCzk', e.target.value)}
-                  fullWidth
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={5}>
-                <TextField
-                  label="Procento BTC (%)"
-                  type="number"
-                  value={order.PercentToSell}
-                  onChange={e => handleCustomOrderChange(idx, 'PercentToSell', e.target.value)}
-                  fullWidth
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={2}>
-                <IconButton onClick={() => handleRemoveOrder(idx)} disabled={customLadder.Orders.length === 1}>
-                  <DeleteIcon />
-                </IconButton>
-              </Grid>
-            </Grid>
+          {STRATEGY_TYPES.map(type => (
+            <label key={type.value} style={{ marginRight: 24 }}>
+              <Radio
+                checked={strategyType === type.value}
+                onChange={handleTypeChange}
+                value={type.value}
+                name="strategyType"
+                color="primary"
+              />
+              {type.label}
+            </label>
           ))}
-          <Button onClick={handleAddOrder} variant="outlined" sx={{ mt: 1 }}>Přidat order</Button>
         </Box>
-      )}
-      {strategyType === 'SmartDistribution' && (
-        <Box mb={2}>
-          <Typography variant="subtitle1">Parametry Smart Distribution</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={4}>
-              <TextField
-                label="Cílový zisk (%)"
-                type="number"
-                value={smartDist.TargetProfitPercent}
-                onChange={e => handleSmartChange('TargetProfitPercent', e.target.value)}
-                fullWidth
-                size="small"
-              />
+        {strategyType === 'CustomLadder' && (
+          <Box mb={2}>
+            <Typography variant="subtitle1">Sell ordery</Typography>
+            {customLadder.Orders.map((order, idx) => (
+              <Grid container spacing={1} alignItems="center" key={idx}>
+                <Grid item xs={5}>
+                  <TextField
+                    label="Cílová cena (CZK)"
+                    type="number"
+                    value={order.TargetPriceCzk}
+                    onChange={e => handleCustomOrderChange(idx, 'TargetPriceCzk', e.target.value)}
+                    fullWidth
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={5}>
+                  <TextField
+                    label="Procento BTC (%)"
+                    type="number"
+                    value={order.PercentToSell}
+                    onChange={e => handleCustomOrderChange(idx, 'PercentToSell', e.target.value)}
+                    fullWidth
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={2}>
+                  <IconButton onClick={() => handleRemoveOrder(idx)} disabled={customLadder.Orders.length === 1}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Grid>
+              </Grid>
+            ))}
+            <Button onClick={handleAddOrder} variant="outlined" sx={{ mt: 1 }}>Přidat order</Button>
+          </Box>
+        )}
+        {strategyType === 'SmartDistribution' && (
+          <Box mb={2}>
+            <Typography variant="subtitle1">Parametry Smart Distribution</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <TextField
+                  label="Cílový zisk (%)"
+                  type="number"
+                  value={smartDist.TargetProfitPercent}
+                  onChange={e => handleSmartChange('TargetProfitPercent', e.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  label="Počet orderů"
+                  type="number"
+                  value={smartDist.OrderCount}
+                  onChange={e => handleSmartChange('OrderCount', e.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  label="BTC zisk (%)"
+                  type="number"
+                  value={smartDist.BtcProfitRatioPercent}
+                  onChange={e => handleSmartChange('BtcProfitRatioPercent', e.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={4}>
-              <TextField
-                label="Počet orderů"
-                type="number"
-                value={smartDist.OrderCount}
-                onChange={e => handleSmartChange('OrderCount', e.target.value)}
-                fullWidth
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                label="BTC zisk (%)"
-                type="number"
-                value={smartDist.BtcProfitRatioPercent}
-                onChange={e => handleSmartChange('BtcProfitRatioPercent', e.target.value)}
-                fullWidth
-                size="small"
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      )}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>Strategie byla uložena</Alert>}
-      <Button type="submit" variant="contained" color="primary" disabled={loading}>
-        {loading ? 'Ukládám...' : 'Uložit'}
-      </Button>
-    </form>
+          </Box>
+        )}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>Strategie byla uložena</Alert>}
+        <Button type="submit" variant="contained" color="primary" disabled={loading}>
+          {loading ? 'Ukládám...' : 'Uložit'}
+        </Button>
+      </form>
+    )
   );
 } 

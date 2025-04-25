@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loan /*, LoanStatus */ } from '../types/loanTypes'; // LoanStatus removed
 import { UserDto } from '../types/userTypes';
-import { fetchCurrentUser } from '../services/userService';
+import { fetchCurrentUser, fetchInternalBtcPrice } from '../services/userService';
 import { fetchLoans as apiFetchLoans } from '../services/loanService'; // Alias to avoid naming conflict
 import { useAuth } from '../context/AuthContext';
 
@@ -30,19 +30,19 @@ export const useDashboardData = () => {
     setError(null);
     try {
       const tokenGetter = getAccessToken;
-      // Fetch user a loans concurrently
-      const [userData, loansData] = await Promise.all([
+      // Fetch user, loans a BTC cenu současně
+      const [userData, loansData, btcPriceData] = await Promise.all([
         fetchCurrentUser(tokenGetter),
         apiFetchLoans(tokenGetter),
+        fetchInternalBtcPrice(tokenGetter),
       ]);
 
-      // Zde můžeš získat cenu BTC z API nebo settings, pokud je potřeba
-      const btcPrice = 0;
+      const btcPrice = btcPriceData?.priceCzk ?? 0;
 
       setDashboardData({
         user: userData,
         loans: loansData,
-        btcPrice: btcPrice ?? 0,
+        btcPrice: btcPrice,
       });
 
     } catch (err) {
