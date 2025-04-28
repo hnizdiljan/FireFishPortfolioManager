@@ -45,7 +45,61 @@ const SellStrategyPage: React.FC = () => {
 
       {strategy ? (
         <div className="bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Generated Strategy</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Zvolená strategie: <span className="text-blue-700">{(strategy as any)?.exitStrategyType || 'N/A'}</span>
+          </h2>
+
+          {/* SUMMARY TABLE */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Přehled půjčky a strategie</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <tbody className="bg-white divide-y divide-gray-200">
+                  <tr>
+                    <td className="font-medium pr-4">Částka k splacení</td>
+                    <td>{loan.repaymentAmountCzk?.toLocaleString()} CZK</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium pr-4">Množství BTC nakoupeno (po poplatcích)</td>
+                    <td>{loan.purchasedBtc !== undefined ? loan.purchasedBtc.toFixed(8) : 'N/A'} BTC</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium pr-4">Aktuální hodnota v půjčce</td>
+                    <td>{(() => {
+                      // BTC not yet sold (Planned/PartiallyFilled/Submitted) - poplatky
+                      const btcSold = strategy.sellOrders?.filter((o: any) => o.status === 'Completed').reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0) || 0;
+                      const btcUnrealized = (loan.purchasedBtc || 0) - btcSold;
+                      const czkFromCompleted = strategy.sellOrders?.filter((o: any) => o.status === 'Completed').reduce((sum: number, o: any) => sum + (o.totalCzk || 0), 0) || 0;
+                      const unrealizedValue = btcUnrealized * (strategy.currentBtcPriceCzk || 0);
+                      const totalValue = unrealizedValue + czkFromCompleted;
+                      return `${totalValue.toLocaleString()} CZK`;
+                    })()}</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium pr-4">Aktuální profit</td>
+                    <td>{(() => {
+                      const btcSold = strategy.sellOrders?.filter((o: any) => o.status === 'Completed').reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0) || 0;
+                      const btcUnrealized = (loan.purchasedBtc || 0) - btcSold;
+                      const czkFromCompleted = strategy.sellOrders?.filter((o: any) => o.status === 'Completed').reduce((sum: number, o: any) => sum + (o.totalCzk || 0), 0) || 0;
+                      const unrealizedValue = btcUnrealized * (strategy.currentBtcPriceCzk || 0);
+                      const totalValue = unrealizedValue + czkFromCompleted;
+                      const profit = totalValue - (loan.repaymentAmountCzk || 0);
+                      const percent = loan.repaymentAmountCzk ? ((profit / loan.repaymentAmountCzk) * 100).toFixed(2) : 'N/A';
+                      return `${profit.toLocaleString()} CZK (${percent} %)`;
+                    })()}</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium pr-4">Estimated BTC value</td>
+                    <td>{strategy.sellOrders?.reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0).toFixed(8)} BTC</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium pr-4">Estimated CZK value</td>
+                    <td>{strategy.sellOrders?.reduce((sum: number, o: any) => sum + (o.totalCzk || 0), 0).toLocaleString()} CZK</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
           
           {!strategy.hasStrategySet && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
