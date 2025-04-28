@@ -88,6 +88,10 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
 
   // Handlery pro Custom Ladder
   const handleCustomOrderChange = (idx: number, field: string, value: string) => {
+    // Validace: zakázat čárku
+    if (value.includes(',')) return;
+    // Validace: pouze čísla a tečka
+    if (!/^\d*\.?\d*$/.test(value) && value !== '') return;
     const updated = customLadder.Orders.map((o, i) => i === idx ? { ...o, [field]: value } : o);
     setCustomLadder({ ...customLadder, Orders: updated });
   };
@@ -100,6 +104,10 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
 
   // Handlery pro Smart Distribution
   const handleSmartChange = (field: string, value: string) => {
+    // Validace: zakázat čárku
+    if (value.includes(',')) return;
+    // Validace: pouze čísla a tečka
+    if (!/^\d*\.?\d*$/.test(value) && value !== '') return;
     setSmartDist({ ...smartDist, [field]: value });
   };
 
@@ -188,21 +196,35 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
                 <Grid item xs={5}>
                   <TextField
                     label="Cílová cena (CZK)"
-                    type="number"
+                    type="text"
                     value={order.TargetPriceCzk}
                     onChange={e => handleCustomOrderChange(idx, 'TargetPriceCzk', e.target.value)}
                     fullWidth
                     size="small"
+                    inputProps={{
+                      pattern: '^\\d*\\.?\\d*$',
+                      inputMode: 'decimal',
+                      placeholder: 'Např. 1234.56',
+                      'aria-label': 'Cílová cena (CZK) - pouze tečka jako oddělovač',
+                    }}
+                    helperText="Používejte tečku jako oddělovač desetinných míst."
                   />
                 </Grid>
                 <Grid item xs={5}>
                   <TextField
                     label="Procento BTC (%)"
-                    type="number"
+                    type="text"
                     value={order.PercentToSell}
                     onChange={e => handleCustomOrderChange(idx, 'PercentToSell', e.target.value)}
                     fullWidth
                     size="small"
+                    inputProps={{
+                      pattern: '^\\d*\\.?\\d*$',
+                      inputMode: 'decimal',
+                      placeholder: 'Např. 50.5',
+                      'aria-label': 'Procento BTC - pouze tečka jako oddělovač',
+                    }}
+                    helperText="Používejte tečku jako oddělovač desetinných míst."
                   />
                 </Grid>
                 <Grid item xs={2}>
@@ -222,31 +244,52 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
               <Grid item xs={4}>
                 <TextField
                   label="Cílový zisk (%)"
-                  type="number"
+                  type="text"
                   value={smartDist.TargetProfitPercent}
                   onChange={e => handleSmartChange('TargetProfitPercent', e.target.value)}
                   fullWidth
                   size="small"
+                  inputProps={{
+                    pattern: '^\\d*\\.?\\d*$',
+                    inputMode: 'decimal',
+                    placeholder: 'Např. 10.5',
+                    'aria-label': 'Cílový zisk (%) - pouze tečka jako oddělovač',
+                  }}
+                  helperText="Používejte tečku jako oddělovač desetinných míst."
                 />
               </Grid>
               <Grid item xs={4}>
                 <TextField
                   label="Počet orderů"
-                  type="number"
+                  type="text"
                   value={smartDist.OrderCount}
                   onChange={e => handleSmartChange('OrderCount', e.target.value)}
                   fullWidth
                   size="small"
+                  inputProps={{
+                    pattern: '^\\d*\\.?\\d*$',
+                    inputMode: 'decimal',
+                    placeholder: 'Např. 3',
+                    'aria-label': 'Počet orderů - pouze čísla',
+                  }}
+                  helperText="Používejte pouze čísla."
                 />
               </Grid>
               <Grid item xs={4}>
                 <TextField
                   label="BTC zisk (%)"
-                  type="number"
+                  type="text"
                   value={smartDist.BtcProfitRatioPercent}
                   onChange={e => handleSmartChange('BtcProfitRatioPercent', e.target.value)}
                   fullWidth
                   size="small"
+                  inputProps={{
+                    pattern: '^\\d*\\.?\\d*$',
+                    inputMode: 'decimal',
+                    placeholder: 'Např. 5.5',
+                    'aria-label': 'BTC zisk (%) - pouze tečka jako oddělovač',
+                  }}
+                  helperText="Používejte tečku jako oddělovač desetinných míst."
                 />
               </Grid>
             </Grid>
