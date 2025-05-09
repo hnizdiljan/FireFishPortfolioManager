@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { useSellStrategy } from '../../hooks/useSellStrategy';
 import LoanDetailOrders from './LoanDetailOrders';
 import ExitStrategyForm from './ExitStrategyForm';
-import { ArrowTrendingUpIcon, Cog6ToothIcon, ListBulletIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { useExitStrategy } from '../../hooks/useExitStrategy';
 import { TextField } from '@mui/material';
