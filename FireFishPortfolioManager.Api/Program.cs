@@ -38,8 +38,9 @@ builder.Services.AddHttpClient<CoinmateService>();
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
-        options.SerializerSettings.TypeNameHandling = Newtonsoft.Json.TypeNameHandling.None;
+        options.SerializerSettings.TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto;
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>

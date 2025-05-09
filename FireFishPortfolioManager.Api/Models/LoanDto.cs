@@ -1,61 +1,47 @@
 using System;
-using System.Collections.Generic;
+using FireFishPortfolioManager.Data; // For LoanStatus enum
 using System.ComponentModel.DataAnnotations;
 
-namespace FireFishPortfolioManager.Data
+namespace FireFishPortfolioManager.Api.Models
 {
-    public class Loan
+    public class LoanDto
     {
-        public int Id { get; set; }
         [Required]
-        public string UserId { get; set; }
-        public User? User { get; set; }
+        public int Id { get; set; }
         [Required]
         public string LoanId { get; set; }
         [Required]
-        public DateTime LoanDate { get; set; }
+        public string LoanDate { get; set; }
+        // LoanPeriodMonths might be optional or default to 0 if not provided from entity, but usually present.
+        [Required]
         public int LoanPeriodMonths { get; set; }
         [Required]
-        public DateTime RepaymentDate { get; set; }
-
+        public string RepaymentDate { get; set; }
         [Required]
         public LoanStatus Status { get; set; }
-
         [Required]
         public decimal LoanAmountCzk { get; set; }
-
         [Required]
         public decimal InterestRate { get; set; }
-
         [Required]
         public decimal RepaymentAmountCzk { get; set; }
-
         [Required]
         public decimal FeesBtc { get; set; }
-
         [Required]
         public decimal TransactionFeesBtc { get; set; }
-
         [Required]
         public decimal CollateralBtc { get; set; }
         [Required]
         public decimal TotalSentBtc { get; set; }
-
         [Required]
         public decimal PurchasedBtc { get; set; }
-
         [Required]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public decimal PotentialValueCzk { get; set; }
+        public decimal RemainingBtcAfterStrategy { get; set; }
         [Required]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public string CreatedAt { get; set; }
         [Required]
-        public List<SellOrder> SellOrders { get; set; } = new List<SellOrder>();
-        public string? StrategyJson { get; set; }
-    }
-
-    public enum LoanStatus
-    {
-        Active,
-        Closed
+        public string UpdatedAt { get; set; }
+        public string StrategyJson { get; set; }
     }
 } 

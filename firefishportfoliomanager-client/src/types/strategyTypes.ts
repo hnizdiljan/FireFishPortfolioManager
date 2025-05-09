@@ -1,4 +1,2 @@
-import type { components } from '../api-types';
-
-export type SellStrategy = components["schemas"]["SellStrategy"];
-export type SellStrategyOrder = components["schemas"]["SellStrategyOrder"];
+// Odstraněny typy SellStrategy a SellStrategyOrder pokud nejsou potřeba
+export {};

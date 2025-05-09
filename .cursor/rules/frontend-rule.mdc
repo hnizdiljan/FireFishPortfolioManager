@@ -3,38 +3,110 @@ description:
 globs: firefishportfoliomanager-client/**,*.js,*.tsx,*.ts,*.css,*.html
 alwaysApply: false
 ---
-## ReactJS
-You are a Senior Front-End Developer and an Expert in ReactJS, NextJS, TypeScript, HTML, CSS and modern UI/UX frameworks (e.g., TailwindCSS, Shadcn, Radix). You are thoughtful, give nuanced answers, and are brilliant at reasoning. You carefully provide accurate, factual, thoughtful answers, and are a genius at reasoning.
+# Cursor Project Rules
 
-- Follow the user’s requirements carefully & to the letter.
-- First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
-- Confirm, then write code!
-- Always write correct, best practice, DRY principle (Dont Repeat Yourself), bug free, fully functional and working code also it should be aligned to listed rules down below at Code Implementation Guidelines .
-- Focus on easy and readability code, over being performant.
-- Fully implement all requested functionality.
-- Leave NO todo’s, placeholders or missing pieces.
-- Ensure code is complete! Verify thoroughly finalised.
-- Include all required imports, and ensure proper naming of key components.
-- Be concise Minimize any other prose.
-- If you think there might not be a correct answer, you say so.
-- If you do not know the answer, say so, instead of guessing.
+Jsi seniorní frontend developer se specializací na ReactJS. Tato pravidla slouží jako vodítko pro konzistentní vývoj frontendových projektů s podobným technologickým stackem.
 
-### Coding Environment
-The user asks questions about the following coding languages:
-- ReactJS
-- NextJS
-- JavaScript
-- TypeScript
-- TailwindCSS
-- HTML
-- CSS
+## 1. Jazyk a Framework
 
-### Code Implementation Guidelines
-Follow these rules when you write code:
-- Use early returns whenever possible to make the code more readable.
-- Always use Tailwind classes for styling HTML elements; avoid using CSS or tags.
-- Use “class:” instead of the tertiary operator in class tags whenever possible.
-- Use descriptive variable and function/const names. Also, event functions should be named with a “handle” prefix, like “handleClick” for onClick and “handleKeyDown” for onKeyDown.
-- Implement accessibility features on elements. For example, a tag should have a tabindex=“0”, aria-label, on:click, and on:keydown, and similar attributes.
+*   **Primární jazyk:** TypeScript (`.ts`, `.tsx`).
+*   **UI Knihovna:** React (`react`, `react-dom`).
+*   **Komponenty:** Používat funkcionální komponenty s React Hooks.
 
-- Use consts instead of functions, for example, “const toggle = () =>”. Also, define a type if possible.
+## 2. Struktura Projektu
+
+*   **Zdrojový kód:** `src/`
+*   **Komponenty:** `src/components/`
+*   **Utility/Helpers:** `src/utils/`, `src/helpers/`
+*   **Konstanty:** `src/constants/`
+*   **Assety:** `src/assets/` (včetně `src/assets/svg/` pro SVG ikony a `src/assets/svg/dist/` pro generované komponenty)
+*   **Veřejné soubory:** `public/`
+*   **Routing:** `src/routes/` (předpoklad, může se lišit)
+*   **Stavy (Zustand):** `src/store/` nebo `src/stores/` (předpoklad)
+*   **Typy:** `src/types/` nebo definované u komponent/modulů.
+*   **Konfigurace i18n:** Pravděpodobně v `src/i18n/` nebo `src/locales/`.
+
+## 3. Styling
+
+*   **Metoda:** `styled-components` pro CSS-in-JS.
+*   **UI Kit:** `antd` pro hotové komponenty a layout.
+*   **Konvence:** Definovat styled komponenty blízko React komponent, které je používají.
+
+## 4. State Management
+
+*   **Nástroj:** `Zustand`.
+*   **Struktura:** Vytvářet oddělené "stores" pro různé části stavu aplikace.
+
+## 5. Routing
+
+*   **Nástroj:** `react-router`.
+*   **Konfigurace:** Definovat routy centrálně (např. v `src/routes/index.tsx`).
+
+## 6. Formátování (Prettier)
+
+Dodržovat konfiguraci z `.prettierrc`:
+
+*   `printWidth`: 100
+*   `tabWidth`: 2
+*   `useTabs`: false
+*   `semi`: true
+*   `singleQuote`: true
+*   `trailingComma`: "es5"
+*   `bracketSpacing`: true
+*   `arrowParens`: "always"
+*   `endOfLine`: "lf"
+*   **Řazení importů:** Automaticky pomocí `@trivago/prettier-plugin-sort-imports` podle pořadí definovaného v `.prettierrc`:
+    ```
+    "importOrder": [
+      "^@components/(.*)$",
+      "^@helpers/(.*)$",
+      "^@utils/(.*)$",
+      "^@constants/(.*)$",
+      "^@assets/(.*)$",
+      "@/",
+      "^[./]"
+    ],
+    "importOrderSeparation": true,
+    "importOrderSortSpecifiers": true
+    ```
+
+## 7. Linting (ESLint)
+
+Dodržovat konfiguraci z `eslint.config.js`:
+
+*   **Základ:** Doporučená pravidla `eslint` a `typescript-eslint`.
+*   **React:**
+    *   `react/react-in-jsx-scope`: `off` (není nutný `import React`).
+    *   Pravidla pro hooks (`eslint-plugin-react-hooks`).
+    *   Pravidla pro refresh (`eslint-plugin-react-refresh`).
+    *   Varování pro `jsx-key`, `jsx-no-comment-textnodes`, `jsx-no-useless-fragment`.
+    *   `jsx-props-no-spreading`: `off`.
+    *   `react/jsx-curly-brace-presence`: `warn` (preferovat `prop={val}` a `{var}`).
+*   **Obecné:**
+    *   `padding-line-between-statements`: Prázdný řádek před `return`.
+    *   `no-console`: `warn` (povoleny `console.warn`, `console.error`).
+*   **Ignorované:** Adresář `dist/`.
+
+## 8. Build a Development
+
+*   **Nástroj:** `Vite`.
+*   **Spouštění:**
+    *   Vývoj: `npm run dev`
+    *   Produkční build: `npm run build`
+    *   Náhled buildu: `npm run preview`
+*   **SVG:** Generovat React komponenty z SVG pomocí `npm run generate-svg` (spouští `@svgr/cli`).
+
+## 9. Internationalization (i18n)
+
+*   **Nástroje:** `i18next`, `react-i18next`.
+*   **Implementace:** Používat `useTranslation` hook a ukládat překlady do JSON souborů (pravděpodobně v `src/locales/`).
+
+## 10. Git Hooks
+
+*   **Nástroj:** `Husky`.
+*   **Účel:** Vynucovat kvalitu kódu (linting, formátování) před commitem/pushem (konfigurace v `.husky/`).
+
+## 11. Závislosti
+
+*   Udržovat závislosti aktuální.
+*   Používat `npm install` pro instalaci. 

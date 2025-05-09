@@ -72,6 +72,10 @@ namespace FireFishPortfolioManager.Data
             modelBuilder.Entity<SellOrder>()
                 .HasKey(s => s.Id);
 
+            modelBuilder.Entity<SellOrder>()
+            .Property(l => l.BtcAmount)
+            .HasColumnType("decimal(18,8)");
+
             // View: CurrentBtcCzkPrice (keyless)
             modelBuilder.Entity<CurrentBtcCzkPrice>().HasNoKey();
         }

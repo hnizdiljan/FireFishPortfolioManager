@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody, Alert } from '@mui/material';
+import { Button, Typography, Box, Table, TableHead, TableRow, TableCell, TableBody, Alert, TableFooter } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import { openSellOrder, cancelSellOrder, syncSellOrders } from '../../services/exitStrategyService';
+import { fetchSellOrdersForLoan } from '../../services/loanService';
 import type { components } from '../../api-types';
 
 const statusLabels = [
@@ -26,6 +27,17 @@ export default function LoanDetailOrders({ loan, refresh }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [orders, setOrders] = useState<SellOrder[]>([]);
+
+  React.useEffect(() => {
+    if (!loan.id) return;
+    setLoading(true);
+    fetchSellOrdersForLoan(getAccessToken, loan.id)
+      .then(setOrders)
+      .catch(() => setError('Chyba při načítání orderů'))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line
+  }, [loan.id, refresh]);
 
   const handleOpen = async (orderId: number) => {
     setLoading(true); setError(null); setSuccess(null);
@@ -58,7 +70,13 @@ export default function LoanDetailOrders({ loan, refresh }: Props) {
     } finally { setLoading(false); }
   };
 
-  const orders = loan.sellOrders;
+  if (loading) return <Box className="py-4 text-center">Načítám ordery...</Box>;
+
+  // Calculate totals for the footer
+  const activeOrders = orders.filter(o => o.status !== 'Cancelled' && o.status !== 'Failed'); // Consider only active/relevant orders for totals
+  const totalBtcAmount = activeOrders.reduce((sum, order) => sum + (order.btcAmount || 0), 0);
+  const totalCzkValue = activeOrders.reduce((sum, order) => sum + (order.totalCzk || 0), 0);
+  const weightedAveragePrice = totalBtcAmount > 0 ? totalCzkValue / totalBtcAmount : 0;
 
   return (
     <Box>
@@ -70,9 +88,9 @@ export default function LoanDetailOrders({ loan, refresh }: Props) {
         <TableHead>
           <TableRow>
             <TableCell>Coinmate ID</TableCell>
-            <TableCell>BTC množství</TableCell>
-            <TableCell>Cena (CZK/BTC)</TableCell>
-            <TableCell>Celkem (CZK)</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>BTC množství</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>Cena (CZK/BTC)</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>Celkem (CZK)</TableCell>
             <TableCell>Stav</TableCell>
             <TableCell>Akce</TableCell>
           </TableRow>
@@ -81,10 +99,10 @@ export default function LoanDetailOrders({ loan, refresh }: Props) {
           {orders.map((order: SellOrder) => (
             <TableRow key={order.id}>
               <TableCell>{order.coinmateOrderId || '-'}</TableCell>
-              <TableCell>{order.btcAmount.toFixed(8)}</TableCell>
-              <TableCell>{order.pricePerBtc.toLocaleString()}</TableCell>
-              <TableCell>{order.totalCzk.toLocaleString()}</TableCell>
-              <TableCell>{statusLabels[typeof order.status === 'string' ? statusLabels.indexOf(order.status) : order.status] || order.status}</TableCell>
+              <TableCell sx={{ textAlign: 'right' }}>{typeof order.btcAmount === 'number' ? order.btcAmount.toFixed(8) : 'N/A'}</TableCell>
+              <TableCell sx={{ textAlign: 'right' }}>{typeof order.pricePerBtc === 'number' ? order.pricePerBtc.toLocaleString() : 'N/A'}</TableCell>
+              <TableCell sx={{ textAlign: 'right' }}>{typeof order.totalCzk === 'number' ? order.totalCzk.toLocaleString() : 'N/A'}</TableCell>
+              <TableCell>{statusLabels[typeof order.status === 'string' ? statusLabels.indexOf(order.status) : (order.status as number)] || order.status}</TableCell>
               <TableCell>
                 {order.status === 'Planned' && (
                   <Button onClick={() => handleOpen(order.id!)} size="small" disabled={loading}>Nahrát na Coinmate</Button>
@@ -96,6 +114,16 @@ export default function LoanDetailOrders({ loan, refresh }: Props) {
             </TableRow>
           ))}
         </TableBody>
+        <TableFooter>
+          <TableRow sx={{ '& > td': { fontWeight: 'bold', borderTop: '2px solid black' } }}>
+            <TableCell>CELKEM (aktivní)</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>{totalBtcAmount.toFixed(8)}</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>{weightedAveragePrice > 0 ? weightedAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</TableCell>
+            <TableCell sx={{ textAlign: 'right' }}>{totalCzkValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+            <TableCell></TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableFooter>
       </Table>
     </Box>
   );

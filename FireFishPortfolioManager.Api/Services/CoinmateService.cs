@@ -114,63 +114,6 @@ namespace FireFishPortfolioManager.Api.Services
             }
         }
 
-        /// <summary>
-        /// Places multiple sell orders on Coinmate according to a sell strategy using user's credentials
-        /// </summary>
-        /// <param name="apiKey">User's Coinmate API key</param>
-        /// <param name="apiSecret">User's Coinmate API secret</param>
-        /// <param name="loan">Loan information</param>
-        /// <param name="strategy">Sell strategy with planned orders</param>
-        /// <returns>List of created sell orders</returns>
-        public async Task<List<SellOrder>> ExecuteSellStrategyAsync(string apiKey, string apiSecret, Loan loan, Models.SellStrategy strategy)
-        {
-             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
-                throw new ArgumentException("User is missing Coinmate API credentials");
-                
-            if (loan == null)
-                throw new ArgumentNullException(nameof(loan));
-                
-            if (strategy == null || !strategy.IsViable)
-                throw new ArgumentException("Invalid or non-viable sell strategy");
-
-            // TODO: How to get Client ID? Assume it can be derived or needs to be stored/provided.
-            // For now, using a placeholder extraction method.
-            var clientId = ExtractClientIdFromApiKey(apiKey); 
-
-            var createdOrders = new List<SellOrder>();
-            
-            foreach (var plannedOrder in strategy.SellOrders)
-            {
-                try
-                {
-                    var coinmateOrderId = await PlaceSellOrderAsync(
-                        clientId, 
-                        apiKey, 
-                        apiSecret,
-                        plannedOrder.BtcAmount,
-                        plannedOrder.PricePerBtc);
-                        
-                    var sellOrder = new SellOrder
-                    {
-                        LoanId = loan.Id,
-                        CoinmateOrderId = coinmateOrderId,
-                        BtcAmount = plannedOrder.BtcAmount,
-                        PricePerBtc = plannedOrder.PricePerBtc,
-                        Status = SellOrderStatus.Submitted,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    createdOrders.Add(sellOrder);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error placing sell order {OrderIndex} for loan {LoanId}", 
-                        strategy.SellOrders.IndexOf(plannedOrder), loan.Id);
-                    // Continue with other orders even if one fails
-                }
-            }
-            
-            return createdOrders;
-        }
         
         /// <summary>
         /// Creates HMAC-SHA256 signature for Coinmate API

@@ -1,4 +1,5 @@
 using FireFishPortfolioManager.Api.Models;
+using LoanDto = FireFishPortfolioManager.Api.Models.LoanDto;
 using FireFishPortfolioManager.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using FireFishPortfolioManager.Data;
+using System;
 
 namespace FireFishPortfolioManager.Api.Controllers
 {
@@ -100,42 +102,6 @@ namespace FireFishPortfolioManager.Api.Controllers
             catch (KeyNotFoundException)
             {
                 return NotFound(string.Empty);
-            }
-        }
-
-        // POST: api/loans/{id}/sellstrategy
-        [HttpPost("{id}/sellstrategy")]
-        public async Task<ActionResult<Models.SellStrategy>> GenerateSellStrategy(int id)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            try
-            {
-                var strategy = await _loanService.GenerateSellStrategyAsync(user.Id, id);
-                return Ok(strategy);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(string.Empty);
-            }
-        }
-
-        // POST: api/loans/{id}/execute
-        [HttpPost("{id}/execute")]
-        public async Task<ActionResult<List<SellOrder>>> ExecuteSellStrategy(int id)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            try
-            {
-                var orders = await _loanService.ExecuteSellStrategyAsync(user.Id, id);
-                return Ok(orders);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(string.Empty);
-            }
-            catch (System.InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
             }
         }
 
@@ -269,8 +235,107 @@ namespace FireFishPortfolioManager.Api.Controllers
             return NoContent();
         }
 
+        // GET: api/loans/{id}/sellorders
+        [HttpGet("{id}/sellorders")]
+        public async Task<ActionResult<List<SellOrderBasicDto>>> GetSellOrdersForLoan(int id)
+        {
+            var user = await _userService.GetOrCreateUserAsync(User);
+            try
+            {
+                var loan = await _loanService.GetLoanAsync(user.Id, id);
+                if (loan?.SellOrders == null)
+                {
+                    return Ok(new List<SellOrderBasicDto>());
+                }
+
+                var sellOrderDtos = loan.SellOrders.Select(order => new SellOrderBasicDto
+                {
+                    Id = order.Id,
+                    LoanId = order.LoanId,
+                    CoinmateOrderId = order.CoinmateOrderId,
+                    BtcAmount = order.BtcAmount,
+                    PricePerBtc = order.PricePerBtc,
+                    TotalCzk = order.TotalCzk,
+                    Status = order.Status,
+                    CreatedAt = order.CreatedAt,
+                    CompletedAt = order.CompletedAt
+                }).ToList();
+
+                return Ok(sellOrderDtos);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Loan with id {id} not found for the user.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while retrieving sell orders.");
+            }
+        }
+
         private LoanDto MapToDto(Loan loan)
         {
+            decimal potentialValueCzk = 0m;
+            decimal czkFromPlannedSellOrders = 0m;
+            if (loan.SellOrders != null)
+            {
+                czkFromPlannedSellOrders = loan.SellOrders
+                    .Where(so => so.Status == SellOrderStatus.Planned || 
+                                 so.Status == SellOrderStatus.Submitted || 
+                                 so.Status == SellOrderStatus.PartiallyFilled)
+                    .Sum(so => so.TotalCzk);
+            }
+
+            // Calculate RemainingBtcAfterStrategy
+            decimal totalAvailableBtcForStrategy = loan.PurchasedBtc - loan.FeesBtc - loan.TransactionFeesBtc;
+            totalAvailableBtcForStrategy = Math.Max(0m, totalAvailableBtcForStrategy); // Ensure not negative
+
+            decimal btcSoldInPlannedOrders = 0m;
+            if (loan.SellOrders != null)
+            {
+                btcSoldInPlannedOrders = loan.SellOrders
+                    .Where(so => so.Status == SellOrderStatus.Planned || 
+                                 so.Status == SellOrderStatus.Submitted || 
+                                 so.Status == SellOrderStatus.PartiallyFilled)
+                    .Sum(so => so.BtcAmount);
+            }
+            decimal remainingBtcAfterStrategy = totalAvailableBtcForStrategy - btcSoldInPlannedOrders;
+            remainingBtcAfterStrategy = Math.Max(0m, remainingBtcAfterStrategy); // Ensure not negative
+
+            potentialValueCzk = czkFromPlannedSellOrders;
+
+            if (remainingBtcAfterStrategy > 0.00000001m && !string.IsNullOrEmpty(loan.StrategyJson))
+            {
+                try
+                {
+                    var strategyBase = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
+                    if (strategyBase is SmartDistributionExitStrategy smartDist && smartDist.BtcProfitRatioPercent > 0)
+                    {
+                        decimal highestPlannedSellPrice = 0m;
+                        if (loan.SellOrders != null && loan.SellOrders.Any(so => so.Status == SellOrderStatus.Planned || so.Status == SellOrderStatus.Submitted || so.Status == SellOrderStatus.PartiallyFilled))
+                        {
+                            highestPlannedSellPrice = loan.SellOrders
+                                .Where(so => so.Status == SellOrderStatus.Planned || so.Status == SellOrderStatus.Submitted || so.Status == SellOrderStatus.PartiallyFilled)
+                                .Max(so => so.PricePerBtc);
+                        }
+                        
+                        // If no planned orders exist to get a price from, this BTC value won't be added.
+                        // Consider a fallback like current market price if _coinmateService was available here and it's desired.
+                        if (highestPlannedSellPrice > 0)
+                        {
+                            decimal valueOfRemainingBtc = remainingBtcAfterStrategy * highestPlannedSellPrice;
+                            potentialValueCzk += valueOfRemainingBtc;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log error deserializing or processing strategy for potential value calculation
+                    // For now, potentialValueCzk will just be czkFromPlannedSellOrders
+                    // Consider logging this: _logger.LogError(ex, "Error processing strategy for potential value with remaining BTC for loan {LoanId}", loan.Id);
+                }
+            }
+
             return new LoanDto
             {
                 Id = loan.Id,
@@ -287,7 +352,9 @@ namespace FireFishPortfolioManager.Api.Controllers
                 CollateralBtc = loan.CollateralBtc,
                 TotalSentBtc = loan.TotalSentBtc,
                 PurchasedBtc = loan.PurchasedBtc,
-
+                PotentialValueCzk = potentialValueCzk,
+                RemainingBtcAfterStrategy = remainingBtcAfterStrategy,
+                StrategyJson = loan.StrategyJson,
                 CreatedAt = loan.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 UpdatedAt = loan.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")
             };

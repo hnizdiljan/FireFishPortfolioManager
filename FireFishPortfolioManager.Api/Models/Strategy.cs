@@ -54,27 +54,6 @@ namespace FireFishPortfolioManager.Api.Models
         public decimal BtcProfitRatioPercent { get; set; } // % of profit to keep in BTC
     }
 
-    public class SellStrategy
-    {
-        public int LoanId { get; set; }
-        public decimal CurrentBtcPriceCzk { get; set; }
-        public decimal TargetSellPriceCzk { get; set; }
-        public decimal BtcToSellForRepayment { get; set; }
-        public decimal RemainingBtcProfit { get; set; }
-        public bool IsViable { get; set; }
-        [Required]
-        public List<SellStrategyOrder> SellOrders { get; set; } = new List<SellStrategyOrder>();
-        public bool HasStrategySet { get; set; } // true pokud je nastavena strategie
-    }
-    
-    // Renamed from PlannedSellOrder
-    public class SellStrategyOrder
-    {
-        public decimal BtcAmount { get; set; }
-        public decimal PricePerBtc { get; set; }
-        public decimal TotalCzk { get; set; }
-    }
-
     public static class ExitStrategyDescriptions
     {
         public const string HODL = "HODL: Při splatnosti se prodá potřebné množství BTC na splacení půjčky. Nejjednodušší strategie bez automatického prodeje v průběhu.";

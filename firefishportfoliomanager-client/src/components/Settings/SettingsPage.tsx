@@ -192,31 +192,43 @@ const SettingsPage: React.FC = () => {
       </div>
       {activeTab === 'portfolio' && (
         <>
-          <UserInfo user={settings ?? { id: '', name: '', email: '' }} />
-          <PortfolioSettings
-            allocatedBtc={allocatedBtc}
-            setAllocatedBtc={setAllocatedBtc}
-            drawdownFromAth={drawdownFromAth}
-            setDrawdownFromAth={setDrawdownFromAth}
-            liquidationPrice={liquidationPrice}
-            setLiquidationPrice={setLiquidationPrice}
-            ltvPercent={ltvPercent}
-            setLtvPercent={setLtvPercent}
-            lastChanged={lastChanged}
-            setLastChanged={setLastChanged}
-            isDrawdownValid={isDrawdownValid}
-            isLtvValid={isLtvValid}
-            handleSaveSettings={handleSaveSettings}
-            saving={saving}
-            effectiveLiquidationPrice={effectiveLiquidationPrice}
-            maxLoanAmount={maxLoanAmount}
-            showPlatformLimitWarning={showPlatformLimitWarning}
-            platformLimitPrice={platformLimitPrice}
-            showLtvCapWarning={showLtvCapWarning}
-            btcPrice={btcPrice}
-            effectiveDrawdownOutput={effectiveDrawdownOutput}
-            ltvToCurrentPrice={ltvToCurrentPrice}
-          />
+          {loading && (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
+          {!loading && settings && (
+            <>
+              <UserInfo user={settings} />
+              <PortfolioSettings
+                allocatedBtc={allocatedBtc}
+                setAllocatedBtc={setAllocatedBtc}
+                drawdownFromAth={drawdownFromAth}
+                setDrawdownFromAth={setDrawdownFromAth}
+                liquidationPrice={liquidationPrice}
+                setLiquidationPrice={setLiquidationPrice}
+                ltvPercent={ltvPercent}
+                setLtvPercent={setLtvPercent}
+                lastChanged={lastChanged}
+                setLastChanged={setLastChanged}
+                isDrawdownValid={isDrawdownValid}
+                isLtvValid={isLtvValid}
+                handleSaveSettings={handleSaveSettings}
+                saving={saving}
+                effectiveLiquidationPrice={effectiveLiquidationPrice}
+                maxLoanAmount={maxLoanAmount}
+                showPlatformLimitWarning={showPlatformLimitWarning}
+                platformLimitPrice={platformLimitPrice}
+                showLtvCapWarning={showLtvCapWarning}
+                btcPrice={btcPrice}
+                effectiveDrawdownOutput={effectiveDrawdownOutput}
+                ltvToCurrentPrice={ltvToCurrentPrice}
+              />
+            </>
+          )}
+          {!loading && !settings && (
+            <div className="text-center text-gray-500 py-10">User settings could not be loaded or are not available.</div>
+          )}
         </>
       )}
       {activeTab === 'api' && (

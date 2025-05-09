@@ -79,24 +79,26 @@ const LoansPage: React.FC = () => {
                 {loansDetails.map((loan: any) => {
                   // Repayment days left
                   const daysLeft = getDaysLeft(loan.repaymentDate);
-                  // Sell orders
-                  const sellOrders = loan.sellOrders || [];
                   // Realized (completed) sell orders
+                  const sellOrders = loan.sellOrders || [];
                   const realized = sellOrders.filter((o: any) => o.status === 'Completed');
                   const realizedBtc = realized.reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0);
                   const realizedCzk = realized.reduce((sum: number, o: any) => sum + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
-                  // All (potential) sell orders (not cancelled/failed)
-                  const potential = sellOrders.filter((o: any) => o.status !== 'Cancelled' && o.status !== 'Failed');
-                  const potentialBtc = potential.reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0);
-                  const potentialCzk = potential.reduce((sum: number, o: any) => sum + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
                   // Nakoupené BTC
                   const boughtBtc = (loan.purchasedBtc || 0) - (loan.feesBtc || 0) - (loan.transactionFeesBtc || 0);
                   // Current Value
                   const currentValue = ((boughtBtc - realizedBtc) * (btcPrice || 0)) + realizedCzk;
                   const currentProfit = loan.repaymentAmountCzk ? ((currentValue / loan.repaymentAmountCzk) - 1) * 100 : 0;
-                  // Potential Value
-                  const potentialValue = ((boughtBtc - potentialBtc) * (btcPrice || 0)) + potentialCzk;
-                  const potentialProfit = loan.repaymentAmountCzk ? ((potentialValue / loan.repaymentAmountCzk) - 1) * 100 : 0;
+                  // Potential Value - USE THE NEW BACKEND FIELD
+                  // The backend now calculates the sum of TotalCzk for planned/submitted/partiallyfilled orders.
+                  const backendPotentialValueCzk = loan.potentialValueCzk || 0; // Use the new field
+                  // The "Profit" for potential value should be based on this backendPotentialValueCzk
+                  // relative to the repayment amount. This assumes backendPotentialValueCzk is the total expected CZK from strategy execution.
+                  // If the strategy doesn't sell all BTC, this profit calculation might be interpreted differently.
+                  // For simplicity, let's calculate profit based on this value directly.
+                  const potentialProfit = loan.repaymentAmountCzk && loan.repaymentAmountCzk > 0 
+                                      ? ((backendPotentialValueCzk / loan.repaymentAmountCzk) - 1) * 100 
+                                      : 0;
                   // Exit strategy
                   let exitStrategyContent = (
                     <span className="inline-block bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">Ještě nic nastaveno</span>
@@ -142,7 +144,7 @@ const LoansPage: React.FC = () => {
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${displayStatus.color || 'bg-gray-100 text-gray-800'}`}>{displayStatus.text}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValueProfit(currentValue, currentProfit)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValueProfit(potentialValue, potentialProfit)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValueProfit(backendPotentialValueCzk, potentialProfit)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{exitStrategyContent}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <button onClick={() => navigate(`/loans/${loan.id}/edit`)} className="text-indigo-600 hover:text-indigo-900">Edit</button>

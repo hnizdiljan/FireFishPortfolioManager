@@ -7,8 +7,8 @@ export async function fetchExitStrategy(getAccessToken: GetAccessTokenFunction, 
   return callApi<ExitStrategyApiResponse | null>(`/api/loans/${loanId}/exitstrategy`, getAccessToken, { method: 'GET' });
 }
 
-export async function saveExitStrategy(getAccessToken: GetAccessTokenFunction, loanId: number, strategy: any) {
-  return callApi(`/api/loans/${loanId}/exitstrategy`, getAccessToken, {
+export async function saveExitStrategy(getAccessToken: GetAccessTokenFunction, loanId: number, strategy: any): Promise<void> {
+  await callApi<null>(`/api/loans/${loanId}/exitstrategy`, getAccessToken, {
     method: 'PUT',
     body: JSON.stringify(strategy),
     headers: { 'Content-Type': 'application/json' },
