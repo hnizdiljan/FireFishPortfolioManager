@@ -1,5 +1,4 @@
 import React from 'react';
-// import { Loan } from '../../types/loanTypes'; // Removed unused import
 import { PortfolioSummaryRow } from './PortfolioSummaryComponents';
 import { UpcomingRepayment, RecentLoans } from './DashboardComponents';
 import ErrorBoundary from '../shared/ErrorBoundary';
@@ -7,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { statusDisplay } from '../../utils/loanUtils';
 import { usePortfolioSummary } from '../../hooks/usePortfolioSummary';
+import type { Loan } from '../../types/loanTypes';
 
 // Make sure this file is treated as a module
 export {};
@@ -37,8 +37,8 @@ const Dashboard: React.FC = () => {
   // Calculate recentLoansSummary here as it's specific to this component's view
   const recentLoansSummary = [...loans].sort((a, b) => 
       new Date(b.loanDate).getTime() - new Date(a.loanDate).getTime()
-    ).slice(0, 3).map(loan => ({
-      id: loan.loanId || `ID-${loan.id}`,
+    ).slice(0, 3).map((loan: Loan) => ({
+      id: loan.loanId || `ID-${String(loan.id)}`,
       date: new Date(loan.loanDate).toISOString().split('T')[0],
       amount: loan.loanAmountCzk, 
       status: statusDisplay[loan.status]?.text || 'Unknown'
