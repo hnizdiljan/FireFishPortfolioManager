@@ -263,6 +263,5 @@ Tento projekt je licencován pod licencí MIT - viz soubor `LICENSE` pro více i
 
 ## Kontakt
 
-- Autor: [Vaše jméno]
-- Email: [Váš email]
-- GitHub: [Váš GitHub profil]
+- Autor: Jan Hnízdil
+- GitHub: hnizdiljan
