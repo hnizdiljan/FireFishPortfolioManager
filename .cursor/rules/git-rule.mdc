@@ -1,0 +1,127 @@
+---
+description: These rules define a standardized GIT workflow to ensure consistency, clarity, efficiency, and traceability in code management for all team members, including automated agents like Cursor.
+globs: 
+alwaysApply: false
+---
+## 1. Branching Model
+
+We use a Gitflow-inspired model, adapted for our needs.
+
+* **`main` (or `master`) Branch:**
+    1.  **Purpose:** MUST always contain production-ready, stable code. This branch is always deployable.
+    2.  **Restrictions:** Direct commits to `main` are STRICTLY FORBIDDEN.
+    3.  **Integration:** Changes are merged into `main` ONLY through Merge Requests (MRs) from `release` or `hotfix` branches.
+* **`develop` Branch:**
+    1.  **Purpose:** Main integration branch for ongoing development. Contains the latest completed and tested features and bug fixes.
+    2.  **Stability:** Should be kept as stable as possible.
+    3.  **Integration:** Direct commits should be limited. Prefer merging from `feat` and `bugfix` branches via MRs.
+* **Feature Branches (`feat/...`):**
+    1.  **Creation:** Create from `develop` for each new feature, task, or experiment.
+    2.  **Naming Convention:** `feat/descriptive-name` (e.g., `feat/user-authentication`, `feat/improve-reporting-performance`). Use English.
+    3.  **Usage:** Primary working branches for Cursor and developers.
+* **Bugfix Branches (`bugfix/...`):**
+    1.  **Creation:** Create from `develop` for non-critical bug fixes related to the current development version.
+    2.  **Naming Convention:** `bugfix/descriptive-name` (e.g., `bugfix/login-form-validation`).
+* **Hotfix Branches (`hotfix/...`):**
+    1.  **Creation:** Create directly from `main` for urgent fixes to critical bugs in the production version.
+    2.  **Naming Convention:** `hotfix/descriptive-name` (e.g., `hotfix/security-vulnerability-CVE-2025-1234`).
+    3.  **Workflow:** After completion and testing, merge back into `main` (and tag it) AND then merge into `develop` to incorporate the fix into ongoing development.
+* **Release Branches (`release/...`):**
+    1.  **Creation:** Create from `develop` when preparing a new production release.
+    2.  **Purpose:** Used for final testing, minor release-specific bug fixes, and metadata preparation (e.g., version updates). No new major features should be added here.
+    3.  **Naming Convention:** `release/version-number` (e.g., `release/v1.2.0`).
+    4.  **Workflow:** After completion and approval, merge into `main` (and tag it) AND then merge back into `develop` (to integrate any minor fixes made during the release preparation).
+
+## 2. Commits
+
+* **Rule 2.1: Atomic Commits**
+    * Each commit MUST represent a single, logical change. Avoid large commits with multiple unrelated changes. Cursor should structure its work into small, logical commits.
+* **Rule 2.2: High-Quality Commit Messages**
+    * **Language:** English.
+    * **Subject Line:**
+        1.  Length: Maximum 50 characters.
+        2.  Style: Concise, use imperative mood (e.g., "Add user login feature", "Fix calculation error").
+        3.  Formatting: Start with a capital letter, do not end with a period.
+    * **Body (Optional):**
+        1.  Separation: Separate from the subject line with a blank line.
+        2.  Content: Explain *what* was changed and *why*, not *how* (the code shows how).
+        3.  References: May include references to issues (e.g., "Closes #123", "Addresses #456").
+    * Example:
+        ```
+        Refactor authentication module
+
+        The previous authentication logic was complex and hard to maintain.
+        This commit simplifies the token generation process and improves error handling.
+
+        Addresses #789
+        ```
+* **Rule 2.3: Commit Frequency**
+    * Commit often. This allows for easier rollbacks, better progress tracking, and simpler code reviews.
+
+## 3. Repository Interaction
+
+* **Rule 3.1: Update Local Branch**
+    * Before starting new work on a branch or before pushing changes, always update your local branch: `git pull --rebase origin <branch-name>`. This maintains a linear history and minimizes merge conflicts.
+* **Rule 3.2: Push Regularly**
+    * Push local commits to the remote repository frequently (at least at the end of a work session or after completing a significant part of a task). This backs up changes and makes them available to the team.
+* **Rule 3.3: Conflict Resolution**
+    * Resolve merge conflicts locally in your working branch *before* creating a Merge Request.
+    * After resolving conflicts, thoroughly test that the application functions correctly.
+    * **Cursor Specific:** If Cursor cannot safely resolve a conflict, it MUST escalate the issue to a human operator.
+
+## 4. Merge Requests (Pull Requests)
+
+* **Rule 4.1: Create MR/PR**
+    * A Merge Request MUST be created for every `feat`, `bugfix`, `hotfix`, or `release` branch that is to be integrated into a target branch (`develop` or `main`).
+* **Rule 4.2: MR/PR Description**
+    * The MR MUST have a clear title and a detailed description explaining the purpose of the changes, the modifications made, and how to test them. Reference relevant tasks or issues.
+* **Rule 4.3: Code Review**
+    * All code MUST be reviewed by at least one other team member before being merged. Cursor can assist by providing automated checks or information to reviewers.
+* **Rule 4.4: Merging Strategy**
+    * Prefer "squash and merge" or "rebase and merge" to maintain a clean and understandable history in `develop` and `main` branches, depending on project policy.
+* **Rule 4.5: Delete Branches After Merging**
+    1.  After a `feat` or `bugfix` branch is successfully merged into `develop`, the source branch SHOULD be deleted from the remote repository.
+    2.  After a `hotfix` or `release` branch is successfully merged into `main` (and subsequently into `develop`), the `hotfix`/`release` branch SHOULD be deleted from the remote repository.
+
+## 5. Tagging
+
+* **Rule 5.1: Tag Releases**
+    * Every production version deployed from the `main` branch MUST be tagged.
+* **Rule 5.2: Semantic Versioning**
+    * Use Semantic Versioning (e.g., `v1.0.0`, `v1.0.1`, `v1.1.0`).
+* **Rule 5.3: Annotated Tags**
+    * Create annotated tags: `git tag -a v1.2.3 -m "Release version 1.2.3"`
+    * Push tags to remote: `git push origin v1.2.3`
+
+## 6. Special Files
+
+* **Rule 6.1: `.gitignore`**
+    * Ensure the `.gitignore` file is correctly and comprehensively configured to prevent unnecessary files (e.g., logs, build artifacts, package manager dependencies, IDE files, local configurations) from being committed.
+    * **Cursor Specific:** Cursor MUST NOT commit files listed in `.gitignore`.
+* **Rule 6.2: `.gitattributes`**
+    * This file can be used to define attributes specific to paths (e.g., line ending normalization: `* text=auto eol=lf`).
+
+## 7. Security and Sensitive Data
+
+* **Rule 7.1: No Sensitive Data in Repository**
+    * NEVER commit sensitive data (such as passwords, API keys, private certificates, access tokens) directly into the repository.
+* **Rule 7.2: Manage Sensitive Data Securely**
+    * Use dedicated secret management tools (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault) or encrypted configuration files (listed in `.gitignore`) exclusively for managing sensitive information.
+    * **Cursor Specific:** Cursor MUST be explicitly instructed not to store such data in code or commits.
+
+## 8. Tools and Automation
+
+* **Rule 8.1: CI/CD (Continuous Integration / Continuous Delivery)**
+    * Actively use CI/CD pipelines for automated testing, building, code quality checks, and deployments.
+* **Rule 8.2: Pre-commit Hooks**
+    * Consider using pre-commit hooks (e.g., via tools like Husky or pre-commit) for automated code checks (linting, formatting, running basic tests) before each local commit.
+
+## 9. Cursor-Specific Rules (Agent Rules)
+
+* **Rule 9.1: Log GIT Operations**
+    * Cursor MUST meticulously log all GIT operations it performs for auditing, tracking, and debugging purposes.
+* **Rule 9.2: GIT Operation Failure Strategy**
+    * A clear strategy MUST be defined for how Cursor should react to GIT command failures (e.g., number of retry attempts, when and how to escalate the problem to a human operator).
+* **Rule 9.3: Permissions**
+
+    * Cursor MUST have only the minimum necessary permissions in the GIT repository to perform its assigned tasks.

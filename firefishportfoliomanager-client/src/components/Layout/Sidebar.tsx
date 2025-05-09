@@ -47,6 +47,16 @@ const Sidebar: React.FC = () => {
               </div>
             </Link>
           </li>
+          <li>
+            <Link to="/sellorders" className="block p-2 rounded-md hover:bg-blue-100 text-gray-800 font-medium">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Sell Orders
+              </div>
+            </Link>
+          </li>
         </ul>
       </div>
     </div>

@@ -15,11 +15,13 @@ namespace FireFishPortfolioManager.Api.Controllers
     {
         private readonly UserService _userService;
         private readonly CoinmateService _coinmateService;
+        private readonly BitcoinMarketDataService _bitcoinMarketDataService;
 
-        public UserController(UserService userService, CoinmateService coinmateService)
+        public UserController(UserService userService, CoinmateService coinmateService, BitcoinMarketDataService bitcoinMarketDataService)
         {
             _userService = userService;
             _coinmateService = coinmateService;
+            _bitcoinMarketDataService = bitcoinMarketDataService;
         }
 
         // GET: api/user
@@ -110,8 +112,7 @@ namespace FireFishPortfolioManager.Api.Controllers
         [HttpGet("btc-price")]
         public async Task<ActionResult<BtcPriceModel>> GetBtcPrice()
         {
-            // Assuming CoinmateService now gets credentials from configuration
-            var price = await _coinmateService.GetCurrentBtcPriceCzkAsync();
+            var price = await _bitcoinMarketDataService.GetCurrentBtcCzkPriceAsync();
             return Ok(new BtcPriceModel { PriceCzk = price });
         }
     }
@@ -127,8 +128,8 @@ namespace FireFishPortfolioManager.Api.Controllers
     // Model for receiving Coinmate credentials
     public class CoinmateCredentialsModel
     {
-        public string ApiKey { get; set; }
-        public string ApiSecret { get; set; }
+        public required string ApiKey { get; set; }
+        public required string ApiSecret { get; set; }
     }
 
     public class BtcPriceModel

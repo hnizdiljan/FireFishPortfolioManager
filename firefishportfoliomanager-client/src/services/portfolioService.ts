@@ -1,5 +1,5 @@
 import { PortfolioSummary } from '../types/portfolioTypes';
-import { Loan, LoanStatus } from '../types/loanTypes';
+import { Loan } from '../types/loanTypes';
 import { callApi } from './apiService';
 
 // Define the type for the function that gets the token
@@ -25,7 +25,7 @@ export const createPortfolioService = (getAccessToken: GetAccessTokenFunction) =
 
     // Count active loans and get their total amount
     const activeLoans = loansData.filter((loan: Loan) => 
-      loan.status === LoanStatus.Active
+      loan.status !== 'Closed'
     );
     
     const activeLoanCount = activeLoans.length;
@@ -65,8 +65,6 @@ export const createPortfolioService = (getAccessToken: GetAccessTokenFunction) =
     
     const portfolioSummary: PortfolioSummary = {
       allocatedBtc: userData.allocatedBtc,
-      targetLtv: userData.targetLtv,
-      maxLoanAmount: userData.maxLoanAmount,
       activeLoanCount,
       totalLoanAmountCzk,
       totalPurchasedBtc,

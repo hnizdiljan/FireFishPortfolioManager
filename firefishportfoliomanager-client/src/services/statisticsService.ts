@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loan, LoanStatus } from '../types/loanTypes';
+import { Loan } from '../types/loanTypes';
 import { createPortfolioService } from './portfolioService';
 import { useAuth } from '../context/AuthContext';
+import { fetchInternalBtcPrice } from './userService';
 
 // Types for statistics data
 export interface ChartData {
@@ -44,18 +45,16 @@ export const useStatisticsService = () => {
       }
       const portfolioService = createPortfolioService(getAccessToken);
 
-      // Fetch loans (BTC price získáme z loanů nebo z API jinde)
-      const loans = await portfolioService.fetchLoans();
-      // Pokud potřebuješ aktuální cenu BTC, doporučuji ji získat přes API /api/User/btc-price mimo tento hook
-      // Zde pro ukázku použijeme průměrnou cenu z loanů, pokud existuje
-      const btcPrices = loans.map(l => l.currentBtcPrice).filter(p => typeof p === 'number' && !isNaN(p));
-      const validBtcPrice = btcPrices.length > 0 ? btcPrices.reduce((a, b) => a + b, 0) / btcPrices.length : 0;
+      // Fetch loans a aktuální cenu BTC z API
+      const [loans, btcPriceData] = await Promise.all([
+        portfolioService.fetchLoans(),
+        fetchInternalBtcPrice(getAccessToken)
+      ]);
+      const validBtcPrice = typeof btcPriceData.priceCzk === 'number' ? btcPriceData.priceCzk : 0;
 
       // Calculate statistics summary
       const totalLoans = loans.length;
-      const activeLoans = loans.filter((loan: Loan) => 
-          loan.status === LoanStatus.Active
-      );
+      const activeLoans = loans.filter(l => l.status === 'Active');
       const activeLoansCzk = activeLoans.reduce((sum: number, loan: Loan) => sum + (loan.loanAmountCzk || 0), 0);
       const totalBtcPurchased = loans.reduce((sum: number, loan: Loan) => sum + (loan.purchasedBtc || 0), 0);
       
@@ -100,7 +99,7 @@ export const useStatisticsService = () => {
         // Loans up to this month
         const monthLoans = sortedLoans.filter((_, index) => index < (i + 1) * (sortedLoans.length / 6));
         // Aktivní půjčky v daném období
-        const monthActiveLoans = monthLoans.filter(l => l.status === LoanStatus.Active);
+        const monthActiveLoans = monthLoans.filter(l => l.status === 'Active');
         // Volný kolaterál
         const cumulativeCollateral = monthActiveLoans.reduce((sum, loan) => sum + (loan.collateralBtc || 0), 0);
         // Nakoupené BTC

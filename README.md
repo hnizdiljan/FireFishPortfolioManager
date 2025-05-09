@@ -211,14 +211,14 @@ az staticwebapp create --name FireFishPortfolioUI --resource-group FireFishPortf
 3. Ujistěte se, že nastavíte správné proměnné prostředí pro připojení k backend API:
    - Přejděte do nastavení Static Web App v Azure Portal
    - Přidejte konfigurační parametry v sekci "Configuration" -> "Application settings"
-   - Nastavte REACT_APP_API_URL na URL vašeho backend API
+   - Nastavte REACT_APP_API_BASE_URL na URL vašeho backend API
 
 ### Propojení frontend a backend aplikací
 
 1. V React aplikaci upravte soubory s API voláními, aby používaly správnou URL:
    - Vytvořte `.env.production` soubor v kořenovém adresáři frontend projektu:
    ```
-   REACT_APP_API_URL=https://firefishportfolioapi.azurewebsites.net/api
+   REACT_APP_API_BASE_URL=https://firefishportfolioapi.azurewebsites.net/api
    ```
 
 2. V backend API nakonfigurujte CORS pro povolení přístupu z frontendu:

@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.AspNetCore.DataProtection;
+using FireFishPortfolioManager.Data;
+using NSwag;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,12 +31,18 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<LoanService>();
 builder.Services.AddScoped<PortfolioCalculationService>();
 builder.Services.AddScoped<BitcoinMarketDataService>();
+builder.Services.AddScoped<ExitStrategyService>();
 builder.Services.AddHttpClient<CoinmateService>();
 
 // Controllers, Swagger, CORS
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto;
+        options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -44,6 +53,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddOpenApiDocument();
+
 var app = builder.Build();
 
 // Exception page only in Development
@@ -52,15 +63,15 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-// Swagger vždy povolený
-app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fire Fish Portfolio Manager API v1"));
-
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// NSwag middleware
+app.UseOpenApi();
+app.UseSwaggerUi();
 
 // DB migrace při startu
 using (var scope = app.Services.CreateScope())

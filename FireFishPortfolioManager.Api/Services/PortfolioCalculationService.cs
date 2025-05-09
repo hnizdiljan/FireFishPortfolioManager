@@ -2,6 +2,7 @@ using FireFishPortfolioManager.Api.Models;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using FireFishPortfolioManager.Data;
 
 namespace FireFishPortfolioManager.Api.Services
 {
@@ -55,48 +56,5 @@ namespace FireFishPortfolioManager.Api.Services
             return totalRequiredBtc;
         }
         
-        /// <summary>
-        /// Generates a sell strategy based on user's profit target
-        /// </summary>
-        /// <param name="loan">Loan information</param>
-        /// <param name="currentBtcPriceCzk">Current BTC price in CZK</param>
-        /// <returns>Sell strategy with orders</returns>
-        public async Task<SellStrategy> GenerateSellStrategyAsync(Loan loan, decimal currentBtcPriceCzk)
-        {
-            if (loan == null)
-                throw new ArgumentNullException(nameof(loan));
-            if (currentBtcPriceCzk <= 0)
-                throw new ArgumentException("BTC price must be greater than zero");
-
-            // Calculate target sell price based on total profit percentage
-            decimal targetSellPrice = currentBtcPriceCzk * (1 + loan.TotalTargetProfitPercentage / 100m);
-
-            // Calculate BTC needed to cover repayment and fees
-            decimal btcToSell = CalculateRequiredBtcForRepayment(loan, currentBtcPriceCzk);
-
-            // Build simple sell strategy
-            var strategy = new SellStrategy
-            {
-                LoanId = loan.Id,
-                CurrentBtcPriceCzk = currentBtcPriceCzk,
-                TargetSellPriceCzk = targetSellPrice,
-                BtcToSellForRepayment = btcToSell,
-                RemainingBtcProfit = loan.PurchasedBtc - btcToSell,
-                IsViable = (loan.PurchasedBtc > btcToSell && loan.TotalTargetProfitPercentage > 0),
-                SellOrders = new List<SellStrategyOrder>()
-            };
-
-            if (strategy.IsViable)
-            {
-                strategy.SellOrders.Add(new SellStrategyOrder
-                {
-                    BtcAmount = btcToSell,
-                    PricePerBtc = targetSellPrice,
-                    TotalCzk = btcToSell * targetSellPrice
-                });
-            }
-
-            return strategy;
-        }
     }
 }

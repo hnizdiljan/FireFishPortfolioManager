@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loan } from '../types/loanTypes';
 import { fetchLoans, deleteLoan as apiDeleteLoan } from '../services/loanService';
+import { fetchExitStrategy } from '../services/exitStrategyService';
+import { fetchLoanById } from '../services/loanService';
+import { fetchInternalBtcPrice } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 
 export const useLoans = () => {
@@ -52,4 +55,46 @@ export const useLoans = () => {
     refreshLoans: loadLoans, // Provide a way to manually refresh
     removeLoan,
   };
+};
+
+export const useLoansDetails = () => {
+  const { getAccessToken } = useAuth();
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loansDetails, setLoansDetails] = useState<any[]>([]);
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const baseLoans = await fetchLoans(getAccessToken);
+        setLoans(baseLoans);
+        const btc = await fetchInternalBtcPrice(getAccessToken);
+        setBtcPrice(btc.priceCzk ?? null);
+        const details = await Promise.all(
+          baseLoans.map(async (loan) => {
+            const fullLoan = await fetchLoanById(getAccessToken, loan.id);
+            let exitStrategy = null;
+            try {
+              exitStrategy = await fetchExitStrategy(getAccessToken, loan.id);
+            } catch (e) {
+              exitStrategy = null;
+            }
+            return { ...fullLoan, exitStrategy };
+          })
+        );
+        setLoansDetails(details);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Chyba při načítání detailů půjček');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [getAccessToken]);
+
+  return { loans, loansDetails, btcPrice, isLoading, error };
 }; 

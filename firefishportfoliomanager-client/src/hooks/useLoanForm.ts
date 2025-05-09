@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoanStatus, LoanInput } from '../types/loanTypes';
+import { LoanInput } from '../types/loanTypes';
 import { fetchLoanById, createLoan, updateLoan } from '../services/loanService';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -12,21 +12,19 @@ const initialLoanState: LoanInput = {
   loanDate: new Date().toISOString().split('T')[0],
   loanPeriodMonths: 6,
   repaymentDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0], 
-  status: LoanStatus.Active,
+  status: 'Active',
   loanAmountCzk: 0,
   interestRate: 7, // Default to 7%
-  fireFishFeePercent: 1.5, // This field will be hidden from the UI but kept for backward compatibility
   repaymentAmountCzk: 0,
   feesBtc: 0,
   transactionFeesBtc: 0.0001,
   collateralBtc: 0,
   totalSentBtc: 0,
-  purchasedBtc: 0,
-  totalTargetProfitPercentage: 50,
-  bitcoinProfitRatio: 50
+  purchasedBtc: 0
 };
 
-export const useLoanForm = (loanId?: number) => {
+export const useLoanForm = (loanIdParam?: number) => {
+  const loanId: number = typeof loanIdParam === 'number' ? loanIdParam : 0;
   const [loanData, setLoanData] = useState<LoanInput>(initialLoanState);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -34,9 +32,9 @@ export const useLoanForm = (loanId?: number) => {
   const { getAccessToken } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const isEditing = Boolean(loanId);
+  const isEditing = loanId > 0;
   const isUpdatingRef = useRef(false);
-  const prevLoanPeriodRef = useRef<number>(initialLoanState.loanPeriodMonths);
+  const prevLoanPeriodRef = useRef<number>(6);
 
   // Calculate derived values whenever relevant inputs change
   useEffect(() => {
@@ -49,8 +47,9 @@ export const useLoanForm = (loanId?: number) => {
     let hasUpdates = false;
     
     // Track if loan period has changed
-    const loanPeriodChanged = prevLoanPeriodRef.current !== loanData.loanPeriodMonths;
-    prevLoanPeriodRef.current = loanData.loanPeriodMonths;
+    const loanPeriodMonths = typeof loanData.loanPeriodMonths === 'number' ? loanData.loanPeriodMonths : 6;
+    const loanPeriodChanged = prevLoanPeriodRef.current !== loanPeriodMonths;
+    prevLoanPeriodRef.current = loanPeriodMonths;
 
     // 1. Calculate repayment date from loan date and period
     let newRepaymentDate = loanData.repaymentDate;
@@ -76,7 +75,9 @@ export const useLoanForm = (loanId?: number) => {
 
     // 2. Calculate repayment amount from loan amount and interest rate
     // Always use current loanDate and newRepaymentDate (which may have just been recalculated)
-    if (loanData.loanAmountCzk > 0 && loanData.interestRate >= 0 && loanData.loanDate && newRepaymentDate) {
+    let loanAmountCzk = loanData.loanAmountCzk ?? 0;
+    let interestRate = loanData.interestRate ?? 0;
+    if (loanAmountCzk > 0 && interestRate >= 0 && loanData.loanDate && newRepaymentDate) {
       // calculate days difference ignoring timezone offsets
       const loanDateObj = new Date(loanData.loanDate);
       const repaymentDateObj = new Date(newRepaymentDate);
@@ -91,33 +92,19 @@ export const useLoanForm = (loanId?: number) => {
         repaymentDateObj.getDate()
       );
       const days = Math.max(1, Math.floor((utcRepaymentDate - utcLoanDate) / (1000 * 60 * 60 * 24)));
-      const interestFactor = 1 + ((loanData.interestRate / 100) * days / 365);
-      const repayment = loanData.loanAmountCzk * interestFactor;
+      const interestFactor = 1 + ((interestRate / 100) * days / 365);
+      const repayment = loanAmountCzk * interestFactor;
       
       // Force update repayment if loan period changed
-      if (loanPeriodChanged || Math.abs(repayment - loanData.repaymentAmountCzk) > 0.001) {
+      if (loanPeriodChanged || Math.abs(repayment - (loanData.repaymentAmountCzk ?? 0)) > 0.001) {
         updatedData.repaymentAmountCzk = repayment;
         hasUpdates = true;
       }
     }
 
-    // 3. Calculate collateral based on repayment amount and LTV settings if available
-    if (loanData.repaymentAmountCzk > 0 && settings?.ltv && settings.ltv > 0 && settings.currentBtcPrice && settings.currentBtcPrice > 0) {
-      // For collateral, we use repaymentAmountCzk / (ltv/100)
-      // Example: repayment 100k CZK with LTV 50% = 200k CZK in collateral value
-      const collateralCzk = loanData.repaymentAmountCzk / (settings.ltv / 100);
-      // Convert to BTC using current price
-      const collateralBtc = collateralCzk / settings.currentBtcPrice;
-      
-      if (Math.abs(collateralBtc - loanData.collateralBtc) > 0.00000001) {
-        updatedData.collateralBtc = collateralBtc;
-        hasUpdates = true;
-      }
-    }
-
     // 4. Calculate total BTC sent (collateral + fees + transaction fees)
-    const totalSent = updatedData.collateralBtc + updatedData.feesBtc + updatedData.transactionFeesBtc;
-    if (Math.abs(totalSent - loanData.totalSentBtc) > 0.00000001) {
+    const totalSent = (updatedData.collateralBtc ?? 0) + (updatedData.feesBtc ?? 0) + (updatedData.transactionFeesBtc ?? 0);
+    if (Math.abs(totalSent - (loanData.totalSentBtc ?? 0)) > 0.00000001) {
       updatedData.totalSentBtc = totalSent;
       hasUpdates = true;
     }
@@ -138,7 +125,7 @@ export const useLoanForm = (loanId?: number) => {
 
   // Fetch existing loan data if in edit mode
   useEffect(() => {
-    if (isEditing && loanId) {
+    if (isEditing && loanId > 0) {
       const loadLoan = async () => {
         setIsLoading(true);
         setError(null);
@@ -150,22 +137,19 @@ export const useLoanForm = (loanId?: number) => {
           
           const existingLoan = await fetchLoanById(() => Promise.resolve(token), loanId);
           setLoanData({
-            loanId: existingLoan.loanId || '',
-            loanDate: existingLoan.loanDate || new Date().toISOString().split('T')[0],
-            loanPeriodMonths: existingLoan.loanPeriodMonths || 6,
-            repaymentDate: existingLoan.repaymentDate || new Date().toISOString().split('T')[0],
+            loanId: existingLoan.loanId,
+            loanDate: existingLoan.loanDate,
+            loanPeriodMonths: existingLoan.loanPeriodMonths ?? 6,
+            repaymentDate: existingLoan.repaymentDate,
             status: existingLoan.status,
-            loanAmountCzk: existingLoan.loanAmountCzk || 0,
-            interestRate: existingLoan.interestRate || 0,
-            fireFishFeePercent: existingLoan.fireFishFeePercent || 1.5,
-            repaymentAmountCzk: existingLoan.repaymentAmountCzk || 0,
-            feesBtc: existingLoan.feesBtc || 0,
-            transactionFeesBtc: existingLoan.transactionFeesBtc || 0,
-            collateralBtc: existingLoan.collateralBtc || 0,
-            totalSentBtc: existingLoan.totalSentBtc || 0,
-            purchasedBtc: existingLoan.purchasedBtc || 0,
-            totalTargetProfitPercentage: existingLoan.totalTargetProfitPercentage || 0,
-            bitcoinProfitRatio: existingLoan.bitcoinProfitRatio || 50
+            loanAmountCzk: existingLoan.loanAmountCzk,
+            interestRate: existingLoan.interestRate,
+            repaymentAmountCzk: existingLoan.repaymentAmountCzk,
+            feesBtc: existingLoan.feesBtc,
+            transactionFeesBtc: existingLoan.transactionFeesBtc,
+            collateralBtc: existingLoan.collateralBtc,
+            totalSentBtc: existingLoan.totalSentBtc,
+            purchasedBtc: existingLoan.purchasedBtc ?? 0
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Failed to load loan data';
@@ -214,7 +198,7 @@ export const useLoanForm = (loanId?: number) => {
           (loanToSave as any)[field] = Number((loanToSave[field] as number).toFixed(8));
         }
       });
-      if (isEditing && loanId) {
+      if (isEditing && loanId > 0) {
         await updateLoan(tokenFn, loanId, loanToSave);
       } else {
         await createLoan(tokenFn, loanToSave);

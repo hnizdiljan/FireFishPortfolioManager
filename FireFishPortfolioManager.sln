@@ -5,6 +5,14 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireFishPortfolioManager.Api", "FireFishPortfolioManager.Api\FireFishPortfolioManager.Api.csproj", "{0D71919F-4E08-46FD-972D-245B2ECBEFF3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireFishPortfolioManager.Api.Tests", "FireFishPortfolioManager.Api.Tests\FireFishPortfolioManager.Api.Tests.csproj", "{5DC64436-155F-43C9-B893-7EF609D09D28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireFishPortfolioManager.Data", "FireFishPortfolioManager.Data\FireFishPortfolioManager.Data.csproj", "{3A24C723-10BB-4178-9F80-E4D749E3CEF1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireFishPortfolioManager_Functions", "FireFishPortfolioManager.Functions\FireFishPortfolioManager_Functions.csproj", "{7F31A76B-ABDE-48E0-895F-6E68D4D0C40D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FireFishPortfolioManager.AppHost", "FireFishPortfolioManager.AppHost\FireFishPortfolioManager.AppHost.csproj", "{84F1296C-0732-40E8-B22E-BEC4487EA375}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +26,21 @@ Global
 		{0D71919F-4E08-46FD-972D-245B2ECBEFF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0D71919F-4E08-46FD-972D-245B2ECBEFF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D71919F-4E08-46FD-972D-245B2ECBEFF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DC64436-155F-43C9-B893-7EF609D09D28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DC64436-155F-43C9-B893-7EF609D09D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DC64436-155F-43C9-B893-7EF609D09D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DC64436-155F-43C9-B893-7EF609D09D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A24C723-10BB-4178-9F80-E4D749E3CEF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A24C723-10BB-4178-9F80-E4D749E3CEF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A24C723-10BB-4178-9F80-E4D749E3CEF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A24C723-10BB-4178-9F80-E4D749E3CEF1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F31A76B-ABDE-48E0-895F-6E68D4D0C40D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F31A76B-ABDE-48E0-895F-6E68D4D0C40D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F31A76B-ABDE-48E0-895F-6E68D4D0C40D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F31A76B-ABDE-48E0-895F-6E68D4D0C40D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84F1296C-0732-40E8-B22E-BEC4487EA375}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84F1296C-0732-40E8-B22E-BEC4487EA375}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84F1296C-0732-40E8-B22E-BEC4487EA375}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84F1296C-0732-40E8-B22E-BEC4487EA375}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

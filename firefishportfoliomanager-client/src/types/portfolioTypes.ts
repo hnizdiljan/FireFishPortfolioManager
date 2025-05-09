@@ -1,14 +1,17 @@
 // Make sure this file is treated as a module
 export {};
 
+import type { components } from '../api-types';
+
 /**
  * Types for portfolio data
  */
 
+export type Loan = components["schemas"]["LoanDto"];
+export type LoanStatus = components["schemas"]["LoanStatus"];
+
 export interface PortfolioSummary {
   allocatedBtc: number;
-  targetLtv: number;
-  maxLoanAmount: number;
   activeLoanCount: number;
   totalLoanAmountCzk: number;
   totalPurchasedBtc: number;
@@ -22,44 +25,11 @@ export interface PortfolioSummary {
   ltvPercent: number;
 }
 
-export interface Loan {
-  id: number;
-  loanId: string;
-  loanDate: string;         // Doplnění alias pro borrowDate
-  borrowDate: string;
-  repaymentDate: string;
-  status: LoanStatus;
-  loanAmountCzk: number;    // Doplnění alias pro amountCzk
-  amountCzk: number;
-  interestRate: number;
-  repaymentAmountCzk: number;
-  ffFeesBtc: number;
-  transactionFeesBtc: number;
-  collateralBtc: number;
-  totalSentBtc: number;
-  purchasedBtc: number;     // Doplnění alias pro btcPurchased
-  btcPurchased: number;
-  currentBtcPrice?: number; // Přidání volitelné vlastnosti pro cenu BTC
-}
-
-export enum LoanStatus {
-  Active = 'Active',                   // Oprava na velká písmena pro shodu s kódem v komponentách
-  PendingFiat = 'WaitingForFiat',      // Přizpůsobení názvům v UI komponentách
-  PendingBtcPurchase = 'PendingBtcPurchase',
-  PendingBtcCollateral = 'PendingBtcTransfer',
-  PartiallyRepaid = 'PartiallyRepaid', // Přidání dalšího stavu
-  Completed = 'Repaid',                // Přizpůsobení názvům v UI komponentách
-  Defaulted = 'Overdue',               // Přizpůsobení názvům v UI komponentách
-}
-
 /**
  * Typ pro nastavení uživatele
  */
-export interface UserSettings {
-  name: string;
-  email: string;
-  allocatedBtc: number;
-  targetLtv: number;
-  maxLoanAmount: number;
-  hasApiCredentials: boolean;
-}
+export type UserSettings = components["schemas"]["UserSettingsUpdateModel"] & {
+  name?: string;
+  email?: string;
+  hasApiCredentials?: boolean;
+};

@@ -64,7 +64,6 @@ export const PortfolioSummaryRow: React.FC<SummaryRowProps> = ({ summary }) => {
         <SummaryCard 
           title="LTV (%)" 
           value={typeof summary.ltvPercent === 'number' ? `${summary.ltvPercent.toFixed(0)}%` : 'N/A'}
-          subValue={`Max Loan: ${formatCzk(summary.maxLoanAmount)}`}
         />
         <SummaryCard 
           title="Active Loans" 

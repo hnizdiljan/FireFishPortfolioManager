@@ -1,24 +1,8 @@
-export interface UserDto {
-  id: string; // Azure AD ObjectId
-  name: string;
-  email: string;
-  allocatedBtc: number;
-  targetLtv: number;
-  maxLoanAmount: number; 
-  createdAt: string; // Use string for dates transferred via JSON
-  lastLoginAt?: string | null; // Use string for dates transferred via JSON
-  drawdownFromAth: number;
-  absoluteLiquidationPrice: number;
-  ltvPercent: number;
-}
+import type { components } from '../api-types';
 
-export interface UserSettingsUpdateModel {
-  allocatedBtc: number;
-  drawdownFromAth: number;
-  absoluteLiquidationPrice: number;
-  ltvPercent: number;
-}
+export type UserDto = components["schemas"]["UserDto"];
+export type UserSettingsUpdateModel = components["schemas"]["UserSettingsUpdateModel"];
+export type BtcPriceModel = components["schemas"]["BtcPriceModel"];
 
-export interface BtcPriceModel {
-  priceCzk: number;
-} 
+// Typ pro funkci, která umí získat token
+export type GetAccessTokenFunction = () => Promise<string | null>; 

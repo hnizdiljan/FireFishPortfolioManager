@@ -1,6 +1,6 @@
 import { callApi } from "./apiService";
 import { Loan, LoanInput, SellOrder } from "../types/loanTypes";
-import { SellStrategy } from "../types/strategyTypes";
+// import { SellStrategy } from "../types/strategyTypes";
 
 // Typ pro funkci, která umí získat token
 type GetAccessTokenFunction = () => Promise<string | null>;
@@ -59,19 +59,19 @@ export const deleteLoan = async (getAccessToken: GetAccessTokenFunction, id: num
 };
 
 /**
- * Generate sell strategy for a loan
- * @param getAccessToken Function to retrieve the access token
- * @param id ID of the loan
- */
-export const generateSellStrategy = async (getAccessToken: GetAccessTokenFunction, id: number): Promise<SellStrategy> => {
-  return callApi<SellStrategy>(`/api/Loans/${id}/sellstrategy`, getAccessToken, { method: 'POST' });
-};
-
-/**
  * Execute sell strategy for a loan
  * @param getAccessToken Function to retrieve the access token
  * @param id ID of the loan
  */
 export const executeSellStrategy = async (getAccessToken: GetAccessTokenFunction, id: number): Promise<SellOrder[]> => {
   return callApi<SellOrder[]>(`/api/Loans/${id}/execute`, getAccessToken, { method: 'POST' });
+};
+
+/**
+ * Fetch sell orders for a specific loan
+ * @param getAccessToken Function to retrieve the access token
+ * @param loanId ID of the loan
+ */
+export const fetchSellOrdersForLoan = async (getAccessToken: GetAccessTokenFunction, loanId: number) => {
+  return callApi<SellOrder[]>(`/api/loans/${loanId}/sellorders`, getAccessToken);
 };

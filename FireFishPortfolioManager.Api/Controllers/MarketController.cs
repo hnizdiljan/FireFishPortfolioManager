@@ -19,7 +19,7 @@ namespace FireFishPortfolioManager.Api.Controllers
         [HttpGet("btc-ath")]
         public async Task<ActionResult<BtcAthModel>> GetBtcAthCzk()
         {
-            var ath = await _marketDataService.GetBtcAthCzkAsync();
+            var ath = await _marketDataService.GetCurrentBtcCzkPriceAsync();
             return Ok(new BtcAthModel { AthCzk = ath });
         }
     }

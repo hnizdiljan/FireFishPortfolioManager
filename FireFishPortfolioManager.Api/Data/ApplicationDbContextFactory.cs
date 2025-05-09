@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using FireFishPortfolioManager.Data;
 
 namespace FireFishPortfolioManager.Api.Data
 {

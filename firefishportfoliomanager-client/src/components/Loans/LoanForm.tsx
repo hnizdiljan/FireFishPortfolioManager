@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LoanInput, LoanStatus } from '../../types/loanTypes';
+import { LoanInput } from '../../types/loanTypes';
 import { useLoanForm } from '../../hooks/useLoanForm';
 import NumericInput from '../shared/NumericInput';
 import { useSettings } from '../../context/SettingsContext';
@@ -22,7 +22,7 @@ const LoanForm: React.FC = () => {
     isEditing,
     updateField,
     saveLoan,
-  } = useLoanForm(numericId);
+  } = useLoanForm(numericId ?? 0);
 
   // Lokální stav pro zobrazení aktuální hodnoty LTV a BTC ceny
   const [ltvPercent, setLtvPercent] = React.useState<number | null>(null);
@@ -34,22 +34,22 @@ const LoanForm: React.FC = () => {
       if (!token) return;
       const user = await fetchCurrentUser(() => Promise.resolve(token));
       const btcPriceData = await fetchInternalBtcPrice(() => Promise.resolve(token));
-      setLtvPercent(user.ltvPercent);
-      setBtcPrice(btcPriceData.priceCzk);
+      setLtvPercent(user.ltvPercent ?? null);
+      setBtcPrice(btcPriceData.priceCzk ?? null);
     };
     fetchLtvAndBtc();
   }, [getAccessToken]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    let processedValue: string | number | LoanStatus = value;
+    let processedValue: string | number = value;
 
     if (type === 'number') {
       processedValue = parseFloat(value) || 0;
     } else if (type === 'date') {
       processedValue = value;
     } else if (name === 'status') {
-      processedValue = parseInt(value, 10) as LoanStatus;
+      processedValue = value; // string enum
     } else if (name === 'loanPeriodMonths') {
       processedValue = parseInt(value, 10) || 0;
     }
@@ -71,13 +71,13 @@ const LoanForm: React.FC = () => {
     // Získání aktuálního uživatele a ceny BTC
     const user = await fetchCurrentUser(() => Promise.resolve(token));
     const btcPriceData = await fetchInternalBtcPrice(() => Promise.resolve(token));
-    const ltv = user.ltvPercent;
-    const price = btcPriceData.priceCzk;
+    const ltv = user.ltvPercent ?? null;
+    const price = btcPriceData.priceCzk ?? null;
     setLtvPercent(ltv);
     setBtcPrice(price);
     if (!ltv || !price) return;
-    const requiredCollateralCzk = repaymentAmountCzk / (ltv / 100);
-    const collateralBtc = requiredCollateralCzk / price;
+    const requiredCollateralCzk = repaymentAmountCzk / ((ltv ?? 100) / 100);
+    const collateralBtc = requiredCollateralCzk / (price ?? 1);
     updateField('collateralBtc', Number(collateralBtc.toFixed(8)));
   };
 
@@ -91,9 +91,6 @@ const LoanForm: React.FC = () => {
       </div>
     );
   }
-
-  // Dummy handler for readOnly fields
-  const handleNoChange = () => {};
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -154,8 +151,8 @@ const LoanForm: React.FC = () => {
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                 required
               >
-                <option value={LoanStatus.Active}>Active</option>
-                <option value={LoanStatus.Closed}>Closed</option>
+                <option value="Active">Active</option>
+                <option value="Closed">Closed</option>
               </select>
             </div>
           </div>
@@ -236,18 +233,16 @@ const LoanForm: React.FC = () => {
                 Loan Amount (CZK) <span className="text-red-500">*</span>
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">CZK</span>
-                </div>
-                <NumericInput 
-                  id="loanAmountCzk" 
-                  name="loanAmountCzk" 
-                  value={loanData.loanAmountCzk} 
-                  onChangeNumber={(num) => updateField('loanAmountCzk', num)} 
-                  step="any" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-12 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                <NumericInput
+                  id="loanAmountCzk"
+                  name="loanAmountCzk"
+                  value={loanData.loanAmountCzk}
+                  onChangeNumber={(num) => updateField('loanAmountCzk', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00"
+                  unit={<span>CZK</span>}
                 />
               </div>
             </div>
@@ -257,19 +252,17 @@ const LoanForm: React.FC = () => {
                 Interest Rate (%) <span className="text-red-500">*</span>
               </label>
               <div className="relative mt-1">
-                <NumericInput 
-                  id="interestRate" 
-                  name="interestRate" 
-                  value={loanData.interestRate} 
-                  onChangeNumber={(num) => updateField('interestRate', num)} 
-                  step="any" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                <NumericInput
+                  id="interestRate"
+                  name="interestRate"
+                  value={loanData.interestRate}
+                  onChangeNumber={(num) => updateField('interestRate', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00"
+                  unit={<span>%</span>}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">%</span>
-                </div>
               </div>
             </div>
 
@@ -278,22 +271,17 @@ const LoanForm: React.FC = () => {
                 Repayment Amount (CZK) (Auto-calculated)
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">CZK</span>
-                </div>
-                <NumericInput 
-                  id="repaymentAmountCzk" 
-                  name="repaymentAmountCzk" 
-                  value={loanData.repaymentAmountCzk} 
-                  onChangeNumber={handleNoChange}
-                  readOnly 
-                  className="block w-full border border-gray-200 rounded-lg shadow-sm py-3 pl-12 pr-4 bg-gray-50 text-gray-700 cursor-not-allowed" 
+                <NumericInput
+                  id="repaymentAmountCzk"
+                  name="repaymentAmountCzk"
+                  value={loanData.repaymentAmountCzk}
+                  onChangeNumber={(num) => updateField('repaymentAmountCzk', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                  placeholder="0.00"
+                  unit={<span>CZK</span>}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-                </div>
               </div>
               <p className="mt-1 text-xs text-gray-500">Loan amount + interest</p>
             </div>
@@ -311,18 +299,16 @@ const LoanForm: React.FC = () => {
                 Fire Fish Fees (BTC) <span className="text-red-500">*</span>
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">₿</span>
-                </div>
-                <NumericInput 
-                  id="feesBtc" 
-                  name="feesBtc" 
-                  value={loanData.feesBtc} 
-                  onChangeNumber={(num) => updateField('feesBtc', num)} 
-                  step="any" 
+                <NumericInput
+                  id="feesBtc"
+                  name="feesBtc"
+                  value={loanData.feesBtc}
+                  onChangeNumber={(num) => updateField('feesBtc', num)}
+                  step="any"
                   required
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-10 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00000000"
+                  unit={<span>₿</span>}
                 />
               </div>
             </div>
@@ -332,18 +318,16 @@ const LoanForm: React.FC = () => {
                 Transaction Fees (BTC) <span className="text-red-500">*</span>
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">₿</span>
-                </div>
-                <NumericInput 
-                  id="transactionFeesBtc" 
-                  name="transactionFeesBtc" 
-                  value={loanData.transactionFeesBtc} 
-                  onChangeNumber={(num) => updateField('transactionFeesBtc', num)} 
-                  step="any" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-10 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                <NumericInput
+                  id="transactionFeesBtc"
+                  name="transactionFeesBtc"
+                  value={loanData.transactionFeesBtc}
+                  onChangeNumber={(num) => updateField('transactionFeesBtc', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00000000"
+                  unit={<span>₿</span>}
                 />
               </div>
             </div>
@@ -354,18 +338,16 @@ const LoanForm: React.FC = () => {
                 <span className="ml-2 text-xs text-gray-500">(Manual or <button type="button" onClick={handleRecalculateCollateral} className="underline text-blue-600 hover:text-blue-800">Recalculate</button>)</span>
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">₿</span>
-                </div>
-                <NumericInput 
-                  id="collateralBtc" 
-                  name="collateralBtc" 
-                  value={loanData.collateralBtc} 
-                  onChangeNumber={(num) => updateField('collateralBtc', num)} 
-                  step="any" 
+                <NumericInput
+                  id="collateralBtc"
+                  name="collateralBtc"
+                  value={loanData.collateralBtc}
+                  onChangeNumber={(num) => updateField('collateralBtc', num)}
+                  step="any"
                   required
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-10 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-4 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00000000"
+                  unit={<span>₿</span>}
                 />
               </div>
               <div className="mt-2 bg-blue-50 p-2 rounded-md flex items-start">
@@ -383,22 +365,17 @@ const LoanForm: React.FC = () => {
                 Total BTC Sent (Auto-calculated)
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">₿</span>
-                </div>
-                <NumericInput 
-                  id="totalSentBtc" 
-                  name="totalSentBtc" 
-                  value={loanData.totalSentBtc} 
-                  onChangeNumber={handleNoChange}
-                  readOnly 
-                  className="block w-full border border-gray-200 rounded-lg shadow-sm py-3 pl-10 pr-4 bg-gray-50 text-gray-700 cursor-not-allowed" 
+                <NumericInput
+                  id="totalSentBtc"
+                  name="totalSentBtc"
+                  value={loanData.totalSentBtc}
+                  onChangeNumber={(num) => updateField('totalSentBtc', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                  placeholder="0.00000000"
+                  unit={<span>₿</span>}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-                </div>
               </div>
               <p className="mt-1 text-xs text-gray-500">Collateral + Fees + Transaction Fees</p>
             </div>
@@ -416,65 +393,18 @@ const LoanForm: React.FC = () => {
                 Purchased BTC <span className="text-red-500">*</span>
               </label>
               <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">₿</span>
-                </div>
-                <NumericInput 
-                  id="purchasedBtc" 
-                  name="purchasedBtc" 
-                  value={loanData.purchasedBtc} 
-                  onChangeNumber={(num) => updateField('purchasedBtc', num)} 
-                  step="any" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-10 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
+                <NumericInput
+                  id="purchasedBtc"
+                  name="purchasedBtc"
+                  value={loanData.purchasedBtc}
+                  onChangeNumber={(num) => updateField('purchasedBtc', num)}
+                  step="any"
+                  required
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 pl-4 pr-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   placeholder="0.00000000"
+                  unit={<span>₿</span>}
                 />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="totalTargetProfitPercentage" className="block text-sm font-medium text-gray-700 mb-1">
-                Total Target Profit (%) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative mt-1">
-                <NumericInput 
-                  id="totalTargetProfitPercentage" 
-                  name="totalTargetProfitPercentage" 
-                  value={loanData.totalTargetProfitPercentage} 
-                  onChangeNumber={(num) => updateField('totalTargetProfitPercentage', num)} 
-                  step="any" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
-                  placeholder="0.00"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">%</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="bitcoinProfitRatio" className="block text-sm font-medium text-gray-700 mb-1">
-                Bitcoin Profit Ratio (%) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative mt-1">
-                <NumericInput 
-                  id="bitcoinProfitRatio" 
-                  name="bitcoinProfitRatio" 
-                  value={loanData.bitcoinProfitRatio} 
-                  onChangeNumber={(num) => updateField('bitcoinProfitRatio', num)} 
-                  step="any" 
-                  min="0" 
-                  max="100" 
-                  required 
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150" 
-                  placeholder="0.00"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">%</span>
-                </div>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Percentage of profit to keep in BTC (0-100%).</p>
             </div>
           </div>
         </div>
