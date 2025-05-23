@@ -14,6 +14,7 @@ interface PortfolioSettingsProps {
   setLiquidationPrice: (val: number) => void;
   ltvPercent: number;
   setLtvPercent: (val: number) => void;
+  lastChanged: 'drawdown' | 'liquidation' | 'ltv' | null;
   setLastChanged: (val: 'drawdown' | 'liquidation' | 'ltv') => void;
   isDrawdownValid: boolean;
   isLtvValid: boolean;
@@ -38,6 +39,7 @@ const PortfolioSettings: React.FC<PortfolioSettingsProps> = ({
   setLiquidationPrice,
   ltvPercent,
   setLtvPercent,
+  lastChanged, // eslint-disable-line @typescript-eslint/no-unused-vars
   setLastChanged,
   isDrawdownValid,
   isLtvValid,
