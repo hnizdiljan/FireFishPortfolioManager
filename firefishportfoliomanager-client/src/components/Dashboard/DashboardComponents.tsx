@@ -1,6 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Card, Table, Alert, Typography, Tag, Space, Row, Col, Statistic } from 'antd';
+import { ClockCircleOutlined, EyeOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { PortfolioSummary } from '../../types/portfolioTypes';
+
+const { Title, Text } = Typography;
 
 // Make sure this file is treated as a module
 export {};
@@ -10,16 +14,26 @@ interface UpcomingRepaymentProps {
 }
 
 export const UpcomingRepayment: React.FC<UpcomingRepaymentProps> = ({ nearestRepayment }) => (
-  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-    <h2 className="text-lg font-bold text-yellow-800 mb-2">Upcoming Repayment</h2>
-    <p className="text-yellow-700">
-      Loan #{nearestRepayment.loanId} is due in {nearestRepayment.daysRemaining} days.
-      <span className="font-bold"> Amount due: {nearestRepayment.amountCzk.toLocaleString()} CZK</span>
-    </p>
-    <Link to={`/loans/${nearestRepayment.loanId}`} className="mt-2 inline-block text-yellow-700 font-medium underline">
-      View Loan Details
-    </Link>
-  </div>
+  <Alert
+    message="Upcoming Repayment"
+    description={
+      <Space direction="vertical" size={0}>
+        <Text>
+          Loan #{nearestRepayment.loanId} is due in {nearestRepayment.daysRemaining} days.
+          <Text strong> Amount due: {nearestRepayment.amountCzk.toLocaleString()} CZK</Text>
+        </Text>
+        <Link to={`/loans/${nearestRepayment.loanId}`}>
+          <Text type="warning" style={{ textDecoration: 'underline' }}>
+            <EyeOutlined /> View Loan Details
+          </Text>
+        </Link>
+      </Space>
+    }
+    type="warning"
+    icon={<ClockCircleOutlined />}
+    showIcon
+    style={{ marginBottom: 24 }}
+  />
 );
 
 interface RecentLoansProps {
@@ -31,40 +45,51 @@ interface RecentLoansProps {
   }>;
 }
 
-export const RecentLoans: React.FC<RecentLoansProps> = ({ loans = [] }) => (
-  <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-    <h2 className="text-xl font-bold mb-4">Recent Loans</h2>
-    <div className="overflow-x-auto">
-      <table className="min-w-full">
-        <thead>
-          <tr className="bg-gray-50">
-            <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-            <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-            <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-            <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {loans.map(loan => (
-            <tr key={loan.id}>
-              <td className="py-3 px-3 text-sm font-medium">{loan.id}</td>
-              <td className="py-3 px-3 text-sm text-gray-500">{loan.date}</td>
-              <td className="py-3 px-3 text-sm text-gray-500">{loan.amount.toLocaleString()} CZK</td>
-              <td className="py-3 px-3 text-sm">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                  {loan.status}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    <Link to="/loans" className="mt-4 inline-block text-blue-600 font-medium">
-      View All Loans →
-    </Link>
-  </div>
-);
+export const RecentLoans: React.FC<RecentLoansProps> = ({ loans = [] }) => {
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+    },
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+    },
+    {
+      title: 'Amount',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (amount: number) => `${amount.toLocaleString()} CZK`,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color="green">{status}</Tag>
+      ),
+    },
+  ];
+
+  return (
+    <Card 
+      title={<Title level={4} style={{ margin: 0 }}>Recent Loans</Title>}
+      hoverable
+            extra={        <Link to="/loans">          <Text>            View All Loans <ArrowRightOutlined />          </Text>        </Link>      }
+    >
+      <Table
+        columns={columns}
+        dataSource={loans}
+        rowKey="id"
+        pagination={false}
+        size="small"
+        scroll={{ x: true }}
+      />
+    </Card>
+  );
+};
 
 interface PortfolioPerformanceProps {
   summary: PortfolioSummary;
@@ -73,27 +98,38 @@ interface PortfolioPerformanceProps {
 export const PortfolioPerformance: React.FC<PortfolioPerformanceProps> = ({ summary }) => {
   const currentValue = (summary.totalPurchasedBtc * summary.currentBtcPriceCzk);
   const profit = summary.profit || 0;
-  const profitClass = profit >= 0 ? 'text-green-600' : 'text-red-600';
+  const profitValueStyle = {
+    color: profit >= 0 ? '#52c41a' : '#f5222d'
+  };
   const profitSign = profit >= 0 ? '+' : '';
   
   return (
-    <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-      <h2 className="text-xl font-bold mb-4">Portfolio Performance</h2>
-      <div className="h-64 flex items-center justify-center text-gray-500">
-        <p>Chart placeholder - portfolio performance over time</p>
+    <Card 
+      title={<Title level={4} style={{ margin: 0 }}>Portfolio Performance</Title>}
+      hoverable
+    >
+      <div style={{ height: 256, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+        <Text type="secondary">Chart placeholder - portfolio performance over time</Text>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-gray-500">Current Value</p>
-          <p className="text-lg font-bold">{currentValue.toLocaleString()} CZK</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Profit</p>
-          <p className={`text-lg font-bold ${profitClass}`}>
-            {profitSign}{profit.toLocaleString()} CZK
-          </p>
-        </div>
-      </div>
-    </div>
+      
+      <Row gutter={16}>
+        <Col span={12}>
+          <Statistic 
+            title="Current Value"
+            value={currentValue}
+            suffix="CZK"
+            precision={0}
+          />
+        </Col>
+        <Col span={12}>
+          <Statistic 
+            title="Profit"
+            value={`${profitSign}${profit.toLocaleString()}`}
+            suffix="CZK"
+            valueStyle={profitValueStyle}
+          />
+        </Col>
+      </Row>
+    </Card>
   );
 };

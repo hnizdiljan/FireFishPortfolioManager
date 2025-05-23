@@ -1,25 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Loan } from '../types/loanTypes';
-import { createPortfolioService } from './portfolioService';
-import { useAuth } from '../context/AuthContext';
-import { fetchInternalBtcPrice } from './userService';
-
-// Types for statistics data
-export interface ChartData {
-  labels: string[];
-  btcValues: number[];
-  collateralValues: number[];
-  czkValues: number[];
-}
-
-export interface StatisticsSummary {
-  totalLoans: number;
-  activeLoansCzk: number;
-  totalBtcPurchased: number;
-  totalBtcRemaining: number;
-  totalProfitCzk: number;
-  averageProfitPercentage: number;
-}
+import { useState, useEffect, useCallback } from 'react';import { LoanDto as Loan, ChartData, StatisticsSummary } from '../types';import { createPortfolioService } from './portfolioService';import { useAuthStore, AuthState } from '@store/authStore';import { fetchInternalBtcPrice } from './userService';
 
 /**
  * Hook pro práci se statistikami
@@ -30,7 +9,7 @@ export const useStatisticsService = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
   
   /**
    * Internal function to calculate statistics from loan data
@@ -92,6 +71,7 @@ export const useStatisticsService = () => {
       const sortedLoans = [...loans].sort((a, b) => {
         const dateA = new Date(a.loanDate || "").getTime();
         const dateB = new Date(b.loanDate || "").getTime();
+
         return dateA - dateB;
       });
       

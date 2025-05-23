@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using FireFishPortfolioManager.Data;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace FireFishPortfolioManager.Api.Controllers
 {
@@ -20,12 +21,14 @@ namespace FireFishPortfolioManager.Api.Controllers
         private readonly LoanService _loanService;
         private readonly UserService _userService;
         private readonly ExitStrategyService _exitStrategyService;
+        private readonly ILogger<LoansController> _logger;
 
-        public LoansController(LoanService loanService, UserService userService, ExitStrategyService exitStrategyService)
+        public LoansController(LoanService loanService, UserService userService, ExitStrategyService exitStrategyService, ILogger<LoansController> logger)
         {
             _loanService = loanService;
             _userService = userService;
             _exitStrategyService = exitStrategyService;
+            _logger = logger;
         }
 
         // GET: api/loans
@@ -113,13 +116,26 @@ namespace FireFishPortfolioManager.Api.Controllers
             try
             {
                 var loan = await _loanService.GetLoanAsync(user.Id, id);
+                _logger.LogDebug("GetExitStrategy for loan {LoanId}: StrategyJson = '{StrategyJson}'", id, loan.StrategyJson ?? "(null)");
+
                 if (string.IsNullOrEmpty(loan.StrategyJson))
+                {
+                    _logger.LogDebug("GetExitStrategy for loan {LoanId}: No strategy found, returning NoContent", id);
                     return NoContent();
+                }
+
                 var strategy = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
+                _logger.LogDebug("GetExitStrategy for loan {LoanId}: Successfully deserialized strategy of type {StrategyType}", id, strategy?.GetType().Name ?? "(null)");
                 return Ok(strategy);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "GetExitStrategy for loan {LoanId}: JSON deserialization failed", id);
+                return BadRequest("Invalid strategy JSON format");
             }
             catch (KeyNotFoundException)
             {
+                _logger.LogWarning("GetExitStrategy for loan {LoanId}: Loan not found", id);
                 return NotFound(string.Empty);
             }
         }
@@ -276,20 +292,12 @@ namespace FireFishPortfolioManager.Api.Controllers
         private LoanDto MapToDto(Loan loan)
         {
             decimal potentialValueCzk = 0m;
-            decimal czkFromPlannedSellOrders = 0m;
-            if (loan.SellOrders != null)
-            {
-                czkFromPlannedSellOrders = loan.SellOrders
-                    .Where(so => so.Status == SellOrderStatus.Planned || 
-                                 so.Status == SellOrderStatus.Submitted || 
-                                 so.Status == SellOrderStatus.PartiallyFilled)
-                    .Sum(so => so.TotalCzk);
-            }
-
-            // Calculate RemainingBtcAfterStrategy
+            
+            // Calculate total available BTC for strategy
             decimal totalAvailableBtcForStrategy = loan.PurchasedBtc - loan.FeesBtc - loan.TransactionFeesBtc;
-            totalAvailableBtcForStrategy = Math.Max(0m, totalAvailableBtcForStrategy); // Ensure not negative
+            totalAvailableBtcForStrategy = Math.Max(0m, totalAvailableBtcForStrategy);
 
+            // Calculate RemainingBtcAfterStrategy based on planned orders
             decimal btcSoldInPlannedOrders = 0m;
             if (loan.SellOrders != null)
             {
@@ -300,40 +308,118 @@ namespace FireFishPortfolioManager.Api.Controllers
                     .Sum(so => so.BtcAmount);
             }
             decimal remainingBtcAfterStrategy = totalAvailableBtcForStrategy - btcSoldInPlannedOrders;
-            remainingBtcAfterStrategy = Math.Max(0m, remainingBtcAfterStrategy); // Ensure not negative
+            remainingBtcAfterStrategy = Math.Max(0m, remainingBtcAfterStrategy);
 
-            potentialValueCzk = czkFromPlannedSellOrders;
-
-            if (remainingBtcAfterStrategy > 0.00000001m && !string.IsNullOrEmpty(loan.StrategyJson))
+            // Calculate potential value based on strategy
+            if (!string.IsNullOrEmpty(loan.StrategyJson))
             {
                 try
                 {
                     var strategyBase = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
-                    if (strategyBase is SmartDistributionExitStrategy smartDist && smartDist.BtcProfitRatioPercent > 0)
+                    
+                    if (strategyBase is SmartDistributionExitStrategy smartDist)
                     {
+                        // Calculate potential value from planned sell orders
+                        decimal czkFromPlannedSellOrders = 0m;
                         decimal highestPlannedSellPrice = 0m;
-                        if (loan.SellOrders != null && loan.SellOrders.Any(so => so.Status == SellOrderStatus.Planned || so.Status == SellOrderStatus.Submitted || so.Status == SellOrderStatus.PartiallyFilled))
+                        
+                        if (loan.SellOrders != null)
                         {
-                            highestPlannedSellPrice = loan.SellOrders
-                                .Where(so => so.Status == SellOrderStatus.Planned || so.Status == SellOrderStatus.Submitted || so.Status == SellOrderStatus.PartiallyFilled)
-                                .Max(so => so.PricePerBtc);
+                            var plannedOrders = loan.SellOrders
+                                .Where(so => so.Status == SellOrderStatus.Planned || 
+                                             so.Status == SellOrderStatus.Submitted || 
+                                             so.Status == SellOrderStatus.PartiallyFilled)
+                                .ToList();
+                                
+                            czkFromPlannedSellOrders = plannedOrders.Sum(so => so.TotalCzk);
+                            
+                            if (plannedOrders.Any())
+                            {
+                                highestPlannedSellPrice = plannedOrders.Max(so => so.PricePerBtc);
+                            }
                         }
                         
-                        // If no planned orders exist to get a price from, this BTC value won't be added.
-                        // Consider a fallback like current market price if _coinmateService was available here and it's desired.
-                        if (highestPlannedSellPrice > 0)
+                        // Add value of remaining BTC at highest planned sell price
+                        decimal valueOfRemainingBtc = 0m;
+                        if (remainingBtcAfterStrategy > 0.00000001m && highestPlannedSellPrice > 0)
                         {
-                            decimal valueOfRemainingBtc = remainingBtcAfterStrategy * highestPlannedSellPrice;
-                            potentialValueCzk += valueOfRemainingBtc;
+                            valueOfRemainingBtc = remainingBtcAfterStrategy * highestPlannedSellPrice;
                         }
+                        
+                        potentialValueCzk = czkFromPlannedSellOrders + valueOfRemainingBtc;
+                    }
+                    else if (strategyBase is CustomLadderExitStrategy customLadder && customLadder.Orders?.Any() == true)
+                    {
+                        // Calculate potential value from custom ladder orders
+                        decimal totalValueFromOrders = 0m;
+                        decimal totalBtcUsed = 0m;
+                        decimal highestTargetPrice = 0m;
+                        
+                        foreach (var order in customLadder.Orders)
+                        {
+                            decimal btcAmount = totalAvailableBtcForStrategy * (order.PercentToSell / 100m);
+                            totalValueFromOrders += btcAmount * order.TargetPriceCzk;
+                            totalBtcUsed += btcAmount;
+                            highestTargetPrice = Math.Max(highestTargetPrice, order.TargetPriceCzk);
+                        }
+                        
+                        // Add value of remaining BTC at highest target price from ladder
+                        decimal remainingBtc = Math.Max(0m, totalAvailableBtcForStrategy - totalBtcUsed);
+                        if (remainingBtc > 0 && highestTargetPrice > 0)
+                        {
+                            totalValueFromOrders += remainingBtc * highestTargetPrice;
+                        }
+                        
+                        potentialValueCzk = totalValueFromOrders;
+                    }
+                    else if (strategyBase is HodlExitStrategy)
+                    {
+                        // For HODL, potential value is just the repayment amount (no additional profit)
+                        potentialValueCzk = loan.RepaymentAmountCzk;
+                    }
+                    else
+                    {
+                        // Fallback: use sum of planned sell orders if strategy type is unknown
+                        decimal czkFromPlannedSellOrders = 0m;
+                        if (loan.SellOrders != null)
+                        {
+                            czkFromPlannedSellOrders = loan.SellOrders
+                                .Where(so => so.Status == SellOrderStatus.Planned || 
+                                             so.Status == SellOrderStatus.Submitted || 
+                                             so.Status == SellOrderStatus.PartiallyFilled)
+                                .Sum(so => so.TotalCzk);
+                        }
+                        potentialValueCzk = czkFromPlannedSellOrders;
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log error deserializing or processing strategy for potential value calculation
-                    // For now, potentialValueCzk will just be czkFromPlannedSellOrders
-                    // Consider logging this: _logger.LogError(ex, "Error processing strategy for potential value with remaining BTC for loan {LoanId}", loan.Id);
+                    // Log error deserializing strategy, fallback to sell orders sum
+                    decimal czkFromPlannedSellOrders = 0m;
+                    if (loan.SellOrders != null)
+                    {
+                        czkFromPlannedSellOrders = loan.SellOrders
+                            .Where(so => so.Status == SellOrderStatus.Planned || 
+                                         so.Status == SellOrderStatus.Submitted || 
+                                         so.Status == SellOrderStatus.PartiallyFilled)
+                            .Sum(so => so.TotalCzk);
+                    }
+                    potentialValueCzk = czkFromPlannedSellOrders;
                 }
+            }
+            else
+            {
+                // No strategy set, use sum of planned sell orders
+                decimal czkFromPlannedSellOrders = 0m;
+                if (loan.SellOrders != null)
+                {
+                    czkFromPlannedSellOrders = loan.SellOrders
+                        .Where(so => so.Status == SellOrderStatus.Planned || 
+                                     so.Status == SellOrderStatus.Submitted || 
+                                     so.Status == SellOrderStatus.PartiallyFilled)
+                        .Sum(so => so.TotalCzk);
+                }
+                potentialValueCzk = czkFromPlannedSellOrders;
             }
 
             return new LoanDto

@@ -490,87 +490,99 @@ namespace FireFishPortfolioManager.Api.Services
                     var currentBtcPrice = await _coinmateService.GetCurrentBtcPriceCzkAsync();
                     if (currentBtcPrice <= 0) {
                         _logger.LogError("[Loan {LoanId}] Could not get current BTC price. Aborting SmartDistribution order generation.", loan.Id);
-                        await _context.SaveChangesAsync(); // Save potential order removals
+                        await _context.SaveChangesAsync();
                          _logger.LogInformation("[Loan {LoanId}] Saved context after failing to get BTC price for SmartDist.", loan.Id);
                         return;
                     }
                      _logger.LogInformation("[Loan {LoanId}] Current BTC price for SmartDistribution: {CurrentPrice}", loan.Id, currentBtcPrice);
 
+                    // Základní výpočty
                     decimal repaymentCzk = loan.RepaymentAmountCzk;
+                    decimal targetTotalValueCzk = repaymentCzk * (1 + smartDist.TargetProfitPercent / 100m);
+                    decimal totalProfitCzk = targetTotalValueCzk - repaymentCzk;
                     
-                    // Calculate the total profit in CZK terms if 100% of profit was taken in CZK
-                    decimal overallTargetProfitInCzkTerms = repaymentCzk * (smartDist.TargetProfitPercent / 100m);
-                    
-                    // Calculate the portion of profit to be achieved in CZK via sell orders
-                    decimal czkProfitToAchieveViaSellOrders = overallTargetProfitInCzkTerms * (1 - (smartDist.BtcProfitRatioPercent / 100m));
-                    
-                    // Calculate the total CZK value that the sell orders need to generate
-                    decimal targetCzkValueFromSellOrders = repaymentCzk + czkProfitToAchieveViaSellOrders;
+                    _logger.LogInformation("[Loan {LoanId}] Target values: Total={TargetValue} CZK, Repayment={Repayment} CZK, Profit={Profit} CZK",
+                                         loan.Id, targetTotalValueCzk, repaymentCzk, totalProfitCzk);
 
-                    // Calculate how much BTC should be kept as profit
-                    decimal btcAmountToKeepAsProfit = 0m;
-                    if (totalAvailableBtcForStrategy * currentBtcPrice > repaymentCzk && smartDist.BtcProfitRatioPercent > 0) // Only keep BTC profit if there's a notional profit margin and user wants to keep some BTC profit
+                    // Výpočet kolik zisku má být v CZK (ze sell orderů) vs kolik v BTC
+                    decimal profitFromCzk = totalProfitCzk * (1 - smartDist.BtcProfitRatioPercent / 100m);
+                    
+                    // KLÍČOVÁ OPRAVA: Sell ordery mají generovat pouze: repayment + profit který má být v CZK
+                    // Pokud je BtcProfitRatioPercent = 100%, pak profitFromCzk = 0, a sell ordery pokryjí pouze repayment
+                    decimal targetCzkFromSellOrders = repaymentCzk + profitFromCzk;
+                    
+                    _logger.LogInformation("[Loan {LoanId}] Profit distribution: TotalProfit={TotalProfit} CZK, ProfitFromCZK={ProfitCzk} CZK ({CzkPercent:F1}%), ProfitFromBTC={ProfitBtc} CZK ({BtcPercent:F1}%)",
+                                         loan.Id, totalProfitCzk, profitFromCzk, (1 - smartDist.BtcProfitRatioPercent / 100m) * 100m, 
+                                         totalProfitCzk - profitFromCzk, smartDist.BtcProfitRatioPercent);
+                    
+                    _logger.LogInformation("[Loan {LoanId}] Sell orders target value: {TargetValue} CZK (Repayment: {Repayment} + CZK Profit: {CzkProfit})",
+                                         loan.Id, targetCzkFromSellOrders, repaymentCzk, profitFromCzk);
+
+                    // Odhad kolik BTC potřebujeme na sell ordery (při současné ceně jako aproximace)
+                    decimal estimatedBtcForSellOrders = targetCzkFromSellOrders / currentBtcPrice;
+                    
+                    // Zajistit, že nemáme více BTC na sell ordery než je dostupné
+                    decimal btcForSellOrders = Math.Min(estimatedBtcForSellOrders, totalAvailableBtcForStrategy * 0.99m); // Max 99% pro bezpečnost
+                    decimal btcToKeepAsProfit = totalAvailableBtcForStrategy - btcForSellOrders;
+                    
+                    // Ověření logiky
+                    decimal estimatedValueFromBtcProfit = btcToKeepAsProfit * currentBtcPrice;
+                    decimal estimatedTotalValue = targetCzkFromSellOrders + estimatedValueFromBtcProfit;
+                    
+                    _logger.LogInformation("[Loan {LoanId}] BTC allocation check:", loan.Id);
+                    _logger.LogInformation("  - Total available BTC: {TotalBtc} BTC", totalAvailableBtcForStrategy);
+                    _logger.LogInformation("  - BTC for sell orders: {SellBtc} BTC (estimated value: {SellValue} CZK)", btcForSellOrders, targetCzkFromSellOrders);
+                    _logger.LogInformation("  - BTC to keep as profit: {ProfitBtc} BTC (estimated value at current price: {ProfitValue} CZK)", btcToKeepAsProfit, estimatedValueFromBtcProfit);
+                    _logger.LogInformation("  - Estimated total value: {EstimatedTotal} CZK (target: {TargetTotal} CZK)", estimatedTotalValue, targetTotalValueCzk);
+                    
+                    if (btcForSellOrders <= 0.00000001m)
                     {
-                        decimal btcValueOfRepaymentAtCurrentPrice = repaymentCzk / currentBtcPrice;
-                        decimal notionalBtcProfitPool = Math.Max(0m, totalAvailableBtcForStrategy - btcValueOfRepaymentAtCurrentPrice);
-                        btcAmountToKeepAsProfit = notionalBtcProfitPool * (smartDist.BtcProfitRatioPercent / 100m);
-                    }
-                    btcAmountToKeepAsProfit = Math.Min(btcAmountToKeepAsProfit, totalAvailableBtcForStrategy); // Cannot keep more BTC than available
-
-                    // Calculate the amount of BTC to actually distribute in sell orders
-                    decimal btcToDistributeInSellOrders = totalAvailableBtcForStrategy - btcAmountToKeepAsProfit;
-                    btcToDistributeInSellOrders = Math.Max(0m, btcToDistributeInSellOrders); // Ensure not negative
-
-                    _logger.LogInformation("[Loan {LoanId}] SmartDist Plan: TargetCZKFromSellOrders={TargetCZK}, BtcToDistributeInSellOrders={BtcToSell}, BtcToKeepAsProfit={BtcToKeep}",
-                                         loan.Id, targetCzkValueFromSellOrders, btcToDistributeInSellOrders, btcAmountToKeepAsProfit);
-
-                    if (btcToDistributeInSellOrders <= 0.00000001m)
-                    {
-                        _logger.LogWarning("[Loan {LoanId}] btcToDistributeInSellOrders is too low ({BtcAmount}). Skipping order generation.", loan.Id, btcToDistributeInSellOrders);
-                        await _context.SaveChangesAsync(); // Save changes from order removal (if any)
-                        _logger.LogInformation("[Loan {LoanId}] Saved context after determining no BTC to distribute in orders.", loan.Id);
+                        _logger.LogWarning("[Loan {LoanId}] btcForSellOrders is too low ({BtcAmount}). Skipping order generation.", loan.Id, btcForSellOrders);
+                        await _context.SaveChangesAsync();
                         return;
                     }
 
-                    decimal targetAveragePriceForSellOrders = (btcToDistributeInSellOrders > 0) ? targetCzkValueFromSellOrders / btcToDistributeInSellOrders : currentBtcPrice;
+                    int orderCount = Math.Max(1, smartDist.OrderCount);
+                    decimal btcPerOrder = btcForSellOrders / orderCount;
+
+                    // Výpočet cenového rozsahu
+                    // Potřebujeme ceny tak, aby průměrná cena = targetCzkFromSellOrders / btcForSellOrders
+                    decimal targetAvgPrice = targetCzkFromSellOrders / btcForSellOrders;
                     
-                    _logger.LogInformation("[Loan {LoanId}] SmartDist Derived Calculations: TargetAveragePriceForSellOrders={TargetAvgPrice}",
-                                         loan.Id, targetAveragePriceForSellOrders);
+                    // Vytvoření cenového rozsahu kolem průměrné ceny
+                    decimal priceSpreadPercent = 0.4m; // +/-40% rozptyl kolem průměru
+                    decimal minPrice = targetAvgPrice * (1 - priceSpreadPercent);
+                    decimal maxPrice = targetAvgPrice * (1 + priceSpreadPercent);
+                    
+                    // Zajistit rozumné minimální ceny
+                    minPrice = Math.Max(minPrice, currentBtcPrice * 1.05m); // Min +5% nad současnou cenu
+                    maxPrice = Math.Max(maxPrice, minPrice * 1.2m); // Min 20% rozptyl
+                    
+                    // Přepočítání průměru po úpravě minimální ceny
+                    decimal actualAvgPrice = (minPrice + maxPrice) / 2m;
+                    
+                    _logger.LogInformation("[Loan {LoanId}] Price calculation: Target avg={TargetAvg}, Actual avg={ActualAvg}, Min={Min}, Max={Max}, Current={Current}",
+                                         loan.Id, targetAvgPrice, actualAvgPrice, minPrice, maxPrice, currentBtcPrice);
 
-                    int orderCount = smartDist.OrderCount > 0 ? smartDist.OrderCount : 1;
-                    decimal btcPerOrder = btcToDistributeInSellOrders / orderCount; 
-
-                    _logger.LogInformation("[Loan {LoanId}] SmartDist Order Params: OrderCount={Count}, BtcPerOrder={BtcPerOrderAmount}", 
-                                         loan.Id, orderCount, btcPerOrder);
-
+                    // Generování orderů
                     int generatedCount = 0;
                     for (int i = 0; i < orderCount; i++)
                     {
-                        decimal orderPrice;
-                        if (orderCount == 1)
-                        {
-                            orderPrice = targetAveragePriceForSellOrders;
-                        }
-                        else
-                        {
-                            decimal delta = targetAveragePriceForSellOrders - currentBtcPrice;
-                            // Ensure orderCount - 1 is not zero for division if orderCount is 1 (already handled by if/else)
-                            orderPrice = currentBtcPrice + ((decimal)i / ((decimal)orderCount - 1)) * delta + (delta / 2.0m);
-                        }
-                        orderPrice = Math.Max(0.01m, orderPrice);
+                        decimal priceMultiplier = orderCount == 1 ? 0.5m : (decimal)i / (orderCount - 1);
+                        decimal orderPrice = minPrice + (maxPrice - minPrice) * priceMultiplier;
+                        
+                        // Zaokrouhlení na tisíce
+                        orderPrice = Math.Round(orderPrice / 1000m) * 1000m;
+                        orderPrice = Math.Max(orderPrice, currentBtcPrice * 1.05m);
 
                         decimal actualBtcAmount = (i == orderCount - 1)
-                            ? btcToDistributeInSellOrders - newOrders.Sum(o => o.BtcAmount) // Ensure total sums up to btcToDistributeInSellOrders
+                            ? btcForSellOrders - newOrders.Sum(o => o.BtcAmount) // Poslední order bere zbytek
                             : btcPerOrder;
-                        actualBtcAmount = Math.Max(0m, actualBtcAmount); // Ensure no negative amounts due to precision issues
-
-                         _logger.LogDebug("[Loan {LoanId}] SmartDist Loop {Index}: OrderPrice={Price}, ActualBtcAmount={Amount}", loan.Id, i, orderPrice, actualBtcAmount);
+                            
+                        actualBtcAmount = Math.Max(0m, actualBtcAmount);
 
                         if (actualBtcAmount <= 0.00000001m) {
-                             _logger.LogWarning("[Loan {LoanId}] Skipping SmartDist order {Index} due to low BTC amount: {Amount}", loan.Id, i, actualBtcAmount);
-                            if (i == orderCount -1 && newOrders.Sum(o => o.BtcAmount) < btcToDistributeInSellOrders - 0.00000001m) {
-                                 _logger.LogWarning("[Loan {LoanId}] Last order amount was too low, potentially not all btcToDistributeInSellOrders will be sold.", loan.Id);
-                            }
+                             _logger.LogWarning("[Loan {LoanId}] Skipping order {Index} due to low BTC amount: {Amount}", loan.Id, i, actualBtcAmount);
                             continue;
                         }
 
@@ -584,7 +596,51 @@ namespace FireFishPortfolioManager.Api.Services
                             CreatedAt = now
                         });
                         generatedCount++;
+                        
+                        _logger.LogDebug("[Loan {LoanId}] Generated order {Index}: {BtcAmount} BTC @ {Price} CZK = {Total} CZK",
+                                       loan.Id, i, actualBtcAmount, orderPrice, actualBtcAmount * orderPrice);
                     }
+
+                    // Detailní ověření výsledku
+                    if (newOrders.Any())
+                    {
+                        decimal actualTotalFromOrders = newOrders.Sum(o => o.TotalCzk);
+                        decimal highestPrice = newOrders.Max(o => o.PricePerBtc);
+                        decimal valueOfRemainingBtc = btcToKeepAsProfit * highestPrice;
+                        decimal actualTotalValue = actualTotalFromOrders + valueOfRemainingBtc;
+                        
+                        // Výpočet expectedProfitFromBtc na základě nejvyšší ceny
+                        decimal expectedProfitFromBtc = totalProfitCzk * (smartDist.BtcProfitRatioPercent / 100m);
+                        decimal expectedProfitFromBtcAtHighestPrice = btcToKeepAsProfit * highestPrice;
+                        
+                        _logger.LogInformation("[Loan {LoanId}] === SmartDistribution FINAL VERIFICATION ===", loan.Id);
+                        _logger.LogInformation("[Loan {LoanId}] SELL ORDERS:", loan.Id);
+                        _logger.LogInformation("  - Target: {TargetFromOrders} CZK (Repayment: {Repayment} + CZK Profit: {CzkProfit})", targetCzkFromSellOrders, repaymentCzk, profitFromCzk);
+                        _logger.LogInformation("  - Actual: {ActualFromOrders} CZK", actualTotalFromOrders);
+                        _logger.LogInformation("  - Difference: {Difference} CZK ({DifferencePercent:F2}%)", actualTotalFromOrders - targetCzkFromSellOrders, (actualTotalFromOrders - targetCzkFromSellOrders) / targetCzkFromSellOrders * 100m);
+                        
+                        _logger.LogInformation("[Loan {LoanId}] BTC PROFIT:", loan.Id);
+                        _logger.LogInformation("  - Remaining BTC: {RemainingBtc} BTC", btcToKeepAsProfit);
+                        _logger.LogInformation("  - Value at highest price ({HighestPrice} CZK): {RemainingValue} CZK", highestPrice, valueOfRemainingBtc);
+                        _logger.LogInformation("  - Expected BTC profit: {ExpectedBtcProfit} CZK ({BtcProfitPercent:F1}% of total profit)", expectedProfitFromBtc, smartDist.BtcProfitRatioPercent);
+                        
+                        _logger.LogInformation("[Loan {LoanId}] TOTAL VALUES:", loan.Id);
+                        _logger.LogInformation("  - Target total value: {TargetTotal} CZK", targetTotalValueCzk);
+                        _logger.LogInformation("  - Actual total value: {ActualTotal} CZK", actualTotalValue);
+                        _logger.LogInformation("  - Difference: {TotalDifference} CZK ({TotalDifferencePercent:F2}%)", actualTotalValue - targetTotalValueCzk, (actualTotalValue - targetTotalValueCzk) / targetTotalValueCzk * 100m);
+                        
+                        _logger.LogInformation("[Loan {LoanId}] REPAYMENT COVERAGE:", loan.Id);
+                        _logger.LogInformation("  - Repayment amount: {Repayment} CZK", repaymentCzk);
+                        _logger.LogInformation("  - Covered by sell orders: {Coverage:F2}% ({ActualOrders} / {Repayment})", (actualTotalFromOrders / repaymentCzk) * 100m, actualTotalFromOrders, repaymentCzk);
+                        
+                        // KRITICKÉ VAROVÁNÍ pokud sell ordery nepokrývají repayment při 100% BTC profit
+                        if (smartDist.BtcProfitRatioPercent >= 99.9m && actualTotalFromOrders < repaymentCzk)
+                        {
+                            _logger.LogError("[Loan {LoanId}] CRITICAL ERROR: BTC profit ratio is {BtcRatio}% but sell orders ({SellTotal}) don't cover repayment ({Repayment})!", 
+                                           loan.Id, smartDist.BtcProfitRatioPercent, actualTotalFromOrders, repaymentCzk);
+                        }
+                    }
+                    
                     _logger.LogInformation("[Loan {LoanId}] Generated {Count} planned orders for SmartDistribution strategy.", loan.Id, generatedCount);
                 }
                 else

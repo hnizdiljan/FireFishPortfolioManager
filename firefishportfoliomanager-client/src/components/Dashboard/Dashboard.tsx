@@ -1,12 +1,29 @@
 import React from 'react';
 import { PortfolioSummaryRow } from './PortfolioSummaryComponents';
 import { UpcomingRepayment, RecentLoans } from './DashboardComponents';
-import ErrorBoundary from '../shared/ErrorBoundary';
-import { useAuth } from '../../context/AuthContext';
-import { useDashboardData } from '../../hooks/useDashboardData';
-import { statusDisplay } from '../../utils/loanUtils';
-import { usePortfolioSummary } from '../../hooks/usePortfolioSummary';
-import type { Loan } from '../../types/loanTypes';
+import ErrorBoundary from '@components/shared/ErrorBoundary';
+import { AuthState, useAuthStore } from '@store/authStore';
+import { useDashboardData } from '@hooks/useDashboardData';
+import { statusDisplay } from '@utils/loanUtils';
+import { usePortfolioSummary } from '@hooks/usePortfolioSummary';
+import type { Loan } from '@/types/loanTypes';
+import { Row, Col, Card, Typography, Divider } from 'antd';
+import styled from 'styled-components';
+
+const { Title, Text } = Typography;
+
+const DashboardContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px;
+`;
+
+const StatCard = styled(Card)`
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+`;
 
 // Make sure this file is treated as a module
 export {};
@@ -15,7 +32,7 @@ export {};
 const Dashboard: React.FC = () => {
   const { dashboardData, isLoading, error } = useDashboardData();
   const { user, loans, btcPrice } = dashboardData;
-  const { userName } = useAuth();
+  const userName = useAuthStore((state: AuthState) => state.userName);
   
   // Use the portfolio summary hook
   const portfolioSummary = usePortfolioSummary();
@@ -45,20 +62,21 @@ const Dashboard: React.FC = () => {
     }));
     
   if (isLoading) {
-    return <div className="text-center py-10">Loading dashboard...</div>;
+    return <div style={{ textAlign: 'center', padding: '40px 0' }}>Loading dashboard...</div>;
   }
 
   return (
     <ErrorBoundary>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-        <p className="mb-8 text-lg text-gray-600">Welcome back, {userName || user?.name || 'User'}!</p>
+      <DashboardContainer>
+        <Title level={2} style={{ marginBottom: 24 }}>Dashboard</Title>
+        <Text type="secondary" style={{ fontSize: 18, marginBottom: 32, display: 'block' }}>
+          Welcome back, {userName || user?.name || 'User'}!
+        </Text>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong className="font-bold">Error!</strong>
-            <span className="block sm:inline"> {error}</span>
-          </div>
+          <Card style={{ background: '#fff1f0', borderColor: '#ffa39e', marginBottom: 24 }}>
+            <Text type="danger"><b>Error!</b> {error}</Text>
+          </Card>
         )}
 
         {portfolioSummary && (
@@ -69,50 +87,64 @@ const Dashboard: React.FC = () => {
               <UpcomingRepayment nearestRepayment={portfolioSummary.nearestRepayment} />
             )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12 sm:gap-y-8 md:gap-y-12 lg:gap-y-16 mb-8">
-              <RecentLoans loans={recentLoansSummary} />
-            </div>
+            <Divider />
+            <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+              <Col xs={24} md={12}>
+                <RecentLoans loans={recentLoansSummary} />
+              </Col>
+            </Row>
           </>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Total Active Loaned</div>
-            <div className="text-3xl font-bold">{totalLoanAmount.toLocaleString()} CZK</div>
-            <div className="text-sm text-gray-500 mt-1">({activeLoans.length} active loans)</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Total Repayment Due (Active)</div>
-            <div className="text-3xl font-bold">{totalRepaymentAmount.toLocaleString()} CZK</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Next Repayment Due</div>
-            {nextRepayment ? (
-              <>
-               <div className="text-3xl font-bold">{new Date(nextRepayment.repaymentDate).toLocaleDateString()}</div>
-               <div className="text-sm text-gray-500 mt-1">({nextRepayment.loanId} - {nextRepayment.repaymentAmountCzk.toLocaleString()} CZK)</div>
-              </>
-            ) : (
-              <div className="text-xl text-gray-500">N/A</div>
-            )}
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Total Collateral (Active)</div>
-            <div className="text-3xl font-bold">{totalCollateralBtc.toFixed(4)} BTC</div>
-            <div className="text-sm text-gray-500 mt-1">≈ {collateralValue.toLocaleString()} CZK</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Total Purchased (Active Loans)</div>
-            <div className="text-3xl font-bold">{totalPurchasedBtc.toFixed(4)} BTC</div>
-            <div className="text-sm text-gray-500 mt-1">≈ {purchasedValue.toLocaleString()} CZK</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Current BTC Price</div>
-            <div className="text-3xl font-bold">{btcPrice ? btcPrice.toLocaleString() : 'N/A'} CZK</div>
-          </div>
-        </div>
-
-      </div>
+        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Total Active Loaned</Text>
+              <Title level={3}>{totalLoanAmount.toLocaleString()} CZK</Title>
+              <Text type="secondary">({activeLoans.length} active loans)</Text>
+            </StatCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Total Repayment Due (Active)</Text>
+              <Title level={3}>{totalRepaymentAmount.toLocaleString()} CZK</Title>
+            </StatCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Next Repayment Due</Text>
+              {nextRepayment ? (
+                <>
+                  <Title level={3}>{new Date(nextRepayment.repaymentDate).toLocaleDateString()}</Title>
+                  <Text type="secondary">({nextRepayment.loanId} - {nextRepayment.repaymentAmountCzk.toLocaleString()} CZK)</Text>
+                </>
+              ) : (
+                <Text type="secondary">N/A</Text>
+              )}
+            </StatCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Total Collateral (Active)</Text>
+              <Title level={3}>{totalCollateralBtc.toFixed(4)} BTC</Title>
+              <Text type="secondary">≈ {collateralValue.toLocaleString()} CZK</Text>
+            </StatCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Total Purchased (Active Loans)</Text>
+              <Title level={3}>{totalPurchasedBtc.toFixed(4)} BTC</Title>
+              <Text type="secondary">≈ {purchasedValue.toLocaleString()} CZK</Text>
+            </StatCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <StatCard>
+              <Text type="secondary">Current BTC Price</Text>
+              <Title level={3}>{btcPrice ? btcPrice.toLocaleString() : 'N/A'} CZK</Title>
+            </StatCard>
+          </Col>
+        </Row>
+      </DashboardContainer>
     </ErrorBoundary>
   );
 };

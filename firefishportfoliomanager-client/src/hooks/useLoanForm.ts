@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoanInput } from '../types/loanTypes';
 import { fetchLoanById, createLoan, updateLoan } from '../services/loanService';
-import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
+import { useAuthStore, AuthState } from '@store/authStore';
+import { useSettingsStore, SettingsState } from '@store/settingsStore';
 import { fetchCurrentUser } from '../services/userService';
 
 // Initial state for a new loan
 const initialLoanState: LoanInput = {
+  userId: '', // Bude nastaveno později
   loanId: '',
   loanDate: new Date().toISOString().split('T')[0],
   loanPeriodMonths: 6,
-  repaymentDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0], 
+  repaymentDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0],
   status: 'Active',
   loanAmountCzk: 0,
   interestRate: 7, // Default to 7%
@@ -29,8 +30,10 @@ export const useLoanForm = (loanIdParam?: number) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { getAccessToken } = useAuth();
-  const { settings } = useSettings();
+  
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
+  const settings = useSettingsStore((state: SettingsState) => state.settings);
+
   const navigate = useNavigate();
   const isEditing = loanId > 0;
   const isUpdatingRef = useRef(false);
@@ -43,7 +46,7 @@ export const useLoanForm = (loanIdParam?: number) => {
     if (Object.keys(loanData).length === 0) return;
 
     // Create a copy of current data to update
-    let updatedData = { ...loanData };
+    const updatedData = { ...loanData };
     let hasUpdates = false;
     
     // Track if loan period has changed
@@ -75,8 +78,8 @@ export const useLoanForm = (loanIdParam?: number) => {
 
     // 2. Calculate repayment amount from loan amount and interest rate
     // Always use current loanDate and newRepaymentDate (which may have just been recalculated)
-    let loanAmountCzk = loanData.loanAmountCzk ?? 0;
-    let interestRate = loanData.interestRate ?? 0;
+    const loanAmountCzk = loanData.loanAmountCzk ?? 0;
+    const interestRate = loanData.interestRate ?? 0;
     if (loanAmountCzk > 0 && interestRate >= 0 && loanData.loanDate && newRepaymentDate) {
       // calculate days difference ignoring timezone offsets
       const loanDateObj = new Date(loanData.loanDate);
@@ -135,8 +138,14 @@ export const useLoanForm = (loanIdParam?: number) => {
             throw new Error('No authentication token available');
           }
           
-          const existingLoan = await fetchLoanById(() => Promise.resolve(token), loanId);
+          // Fetch both loan data and current user data in parallel
+          const [existingLoan, currentUser] = await Promise.all([
+            fetchLoanById(() => Promise.resolve(token), loanId),
+            fetchCurrentUser(() => Promise.resolve(token))
+          ]);
+          
           setLoanData({
+            userId: currentUser.id, // Use current user's ID since LoanDto doesn't include userId
             loanId: existingLoan.loanId,
             loanDate: existingLoan.loanDate,
             loanPeriodMonths: existingLoan.loanPeriodMonths ?? 6,
@@ -163,7 +172,7 @@ export const useLoanForm = (loanIdParam?: number) => {
     }
   }, [loanId, isEditing, getAccessToken]);
 
-  const updateField = useCallback((field: keyof LoanInput, value: any) => {
+  const updateField = useCallback((field: keyof LoanInput, value: LoanInput[keyof LoanInput]) => {
     setLoanData(prevData => ({
       ...prevData,
       [field]: value
@@ -179,12 +188,14 @@ export const useLoanForm = (loanIdParam?: number) => {
         throw new Error('No authentication token available');
       }
       const tokenFn = () => Promise.resolve(token);
-      let loanToSave = { ...loanData };
+      const loanToSave = { ...loanData };
+      
       // Pokud není userId, načti aktuálního uživatele a nastav userId
       if (!loanToSave.userId) {
         const user = await fetchCurrentUser(tokenFn);
         loanToSave.userId = user.id;
       }
+      
       // Zaokrouhli BTC hodnoty na 8 desetinných míst
       const btcFields: (keyof LoanInput)[] = [
         'collateralBtc',
@@ -195,7 +206,7 @@ export const useLoanForm = (loanIdParam?: number) => {
       ];
       btcFields.forEach(field => {
         if (typeof loanToSave[field] === 'number') {
-          (loanToSave as any)[field] = Number((loanToSave[field] as number).toFixed(8));
+          (loanToSave[field] as number) = Number((loanToSave[field] as number).toFixed(8));
         }
       });
       if (isEditing && loanId > 0) {
@@ -204,11 +215,13 @@ export const useLoanForm = (loanIdParam?: number) => {
         await createLoan(tokenFn, loanToSave);
       }
       navigate('/loans'); // Navigate back to the loans list
+
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save loan';
       setError(message);
       console.error('Error saving loan:', err);
+
       return false;
     } finally {
       setIsSaving(false);

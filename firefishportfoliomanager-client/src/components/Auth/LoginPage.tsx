@@ -1,43 +1,77 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { AuthState, useAuthStore } from '@store/authStore';
+import { Button, Card, Typography, Alert } from 'antd';
+import styled from 'styled-components';
+
+const LoginPageContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+`;
+
+const StyledCard = styled(Card)`
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+`;
+
+const MicrosoftIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 23 23"
+    style={{ marginRight: '8px' }}
+  >
+    <rect x="1" y="1" width="10" height="10" fill="#f25022" />
+    <rect x="12" y="1" width="10" height="10" fill="#00a4ef" />
+    <rect x="1" y="12" width="10" height="10" fill="#7fba00" />
+    <rect x="12" y="12" width="10" height="10" fill="#ffb900" />
+  </svg>
+);
 
 const LoginPage: React.FC = () => {
-  const { login, error } = useAuth();
+  const login = useAuthStore((state: AuthState) => state.login);
+  const error = useAuthStore((state: AuthState) => state.error);
+  const clearError = useAuthStore((state: AuthState) => state.clearError);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Fire Fish Portfolio Manager</h1>
-          <p className="text-gray-600">Pro pokračování se přihlaste pomocí Microsoft účtu</p>
+    <LoginPageContainer>
+      <StyledCard>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <Typography.Title level={2} style={{ marginBottom: '8px' }}>
+            Fire Fish Portfolio Manager
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            Pro pokračování se přihlaste pomocí Microsoft účtu
+          </Typography.Text>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
-            {error}
-          </div>
+          <Alert
+            message="Chyba přihlášení"
+            description={error}
+            type="error"
+            showIcon
+            closable
+            onClose={clearError}
+            style={{ marginBottom: '24px' }}
+          />
         )}
 
-        <button
+        <Button
+          type="primary"
           onClick={login}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center"
+          block
+          size="large"
+          icon={<MicrosoftIcon />}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 23 23"
-            className="mr-2"
-          >
-            <rect x="1" y="1" width="10" height="10" fill="#f25022" />
-            <rect x="12" y="1" width="10" height="10" fill="#00a4ef" />
-            <rect x="1" y="12" width="10" height="10" fill="#7fba00" />
-            <rect x="12" y="12" width="10" height="10" fill="#ffb900" />
-          </svg>
           Přihlásit se pomocí Microsoft
-        </button>
-      </div>
-    </div>
+        </Button>
+      </StyledCard>
+    </LoginPageContainer>
   );
 };
 

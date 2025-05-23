@@ -5,6 +5,15 @@ import { callApi } from './apiService';
 // Define the type for the function that gets the token
 type GetAccessTokenFunction = () => Promise<string | null>;
 
+interface UserData {
+  allocatedBtc: number;
+  ltvPercent: number;
+}
+
+interface BtcPriceData {
+  priceCzk: number;
+}
+
 /**
  * Factory function to create a portfolio service instance.
  * @param getAccessToken Function to retrieve the access token for API authorization.
@@ -18,9 +27,9 @@ export const createPortfolioService = (getAccessToken: GetAccessTokenFunction) =
   const fetchPortfolioSummary = async (): Promise<PortfolioSummary> => {
     try {      // Fetch user data and BTC price in parallel
       const [userData, loansData, btcPriceData] = await Promise.all([
-        callApi<any>('/api/User', getAccessToken),
+        callApi<UserData>('/api/User', getAccessToken),
         callApi<Loan[]>('/api/Loans', getAccessToken),
-        callApi<any>('/api/User/btc-price', getAccessToken)
+        callApi<BtcPriceData>('/api/User/btc-price', getAccessToken)
       ]);
 
     // Count active loans and get their total amount

@@ -1,6 +1,6 @@
 // Read environment variables for redirect URI and API base URL
-const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI || window.location.origin;
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || window.location.origin;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const msalConfig = {
   auth: {

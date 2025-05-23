@@ -1,164 +1,536 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-// import { Loan, LoanStatus } from '../../types/loanTypes'; // Removed unused types
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Table,
+  Button,
+  Card,
+  Typography,
+  Tag,
+  Space,
+  Tooltip,
+  Row,
+  Col,
+  Statistic,
+  Alert,
+  Modal,
+  Badge,
+  Progress,
+  Spin,
+  Empty,
+  message,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SettingOutlined,
+  CalendarOutlined,
+  DollarOutlined,
+  TrophyOutlined,
+  ExclamationCircleOutlined,
+  RiseOutlined,
+  FallOutlined,
+  WalletOutlined,
+} from '@ant-design/icons';
+import { Loan, ExitStrategy, SellOrder } from '../../types';
 import { useLoansDetails } from '../../hooks/useLoans';
-import { statusDisplay } from '../../utils/loanUtils';
+import { statusDisplay, formatCurrency, formatPercentage } from '../../utils/loanUtils';
+
+const { Title, Text } = Typography;
+const { confirm } = Modal;
+
+type LoanWithDetails = Loan & { 
+  exitStrategy: ExitStrategy | null;
+  sellOrders?: SellOrder[];
+  potentialValueCzk?: number;
+};
 
 const getDaysLeft = (repaymentDate: string) => {
   const today = new Date();
   const repay = new Date(repaymentDate);
+
   return Math.ceil((repay.getTime() - today.getTime()) / (1000 * 3600 * 24));
 };
 
 const formatValueProfit = (value: number, profit: number) => {
-  const profitColor = profit < 0 ? 'text-red-600' : profit > 0 ? 'text-green-600' : 'text-gray-700';
+  const profitColor = profit < 0 ? '#ff4d4f' : profit > 0 ? '#52c41a' : '#8c8c8c';
+  const ProfitIcon = profit > 0 ? RiseOutlined : profit < 0 ? FallOutlined : null;
+  
   return (
-    <span className="flex flex-col">
-      <span>{`CZK ${value.toLocaleString()}`}</span>
-      <span className={`text-xs font-semibold ${profitColor}`}>{profit > 0 ? '+' : ''}{profit.toFixed(2)}%</span>
-    </span>
+    <Space direction="vertical" size={0}>
+      <Text strong>{formatCurrency(value)}</Text>
+      <Text style={{ color: profitColor, fontSize: '12px' }}>
+        {ProfitIcon && <ProfitIcon />} {profit > 0 ? '+' : ''}{formatPercentage(profit)}
+      </Text>
+    </Space>
+  );
+};
+
+const getExitStrategyDisplay = (loan: LoanWithDetails) => {
+  if (!loan.exitStrategy || !loan.exitStrategy.type) {
+    return <Tag color="default">Není nastaveno</Tag>;
+  }
+
+  const { type } = loan.exitStrategy;
+  let color = 'blue';
+  let displayName: string = type;
+  
+  if (type === 'CustomLadder') {
+    color = 'green';
+    displayName = 'Custom Ladder';
+  } else if (type === 'SmartDistribution') {
+    color = 'purple';
+    displayName = 'Smart Distribution';
+  } else if (type === 'HODL') {
+    color = 'gold';
+    displayName = 'HODL';
+  }
+
+  const total = loan.exitStrategy.type === 'CustomLadder' && 'orders' in loan.exitStrategy 
+    ? loan.exitStrategy.orders?.length || 0
+    : loan.exitStrategy.type === 'SmartDistribution' && 'orderCount' in loan.exitStrategy
+    ? loan.exitStrategy.orderCount || 0
+    : 0;
+  
+  let realized = 0;
+  if (loan.sellOrders) {
+    realized = loan.sellOrders.filter((o: SellOrder) => o.status === 'Completed').length;
+  }
+
+  const progressPercent = total > 0 ? (realized / total) * 100 : 0;
+
+  return (
+    <Space direction="vertical" size={4}>
+      <Tag color={color}>{displayName}</Tag>
+      {total > 0 && (
+        <div style={{ width: '100px' }}>
+          <Progress 
+            percent={progressPercent} 
+            size="small" 
+            format={() => `${realized}/${total}`}
+            strokeColor={color === 'green' ? '#52c41a' : color === 'purple' ? '#722ed1' : '#1890ff'}
+          />
+        </div>
+      )}
+    </Space>
   );
 };
 
 const LoansPage: React.FC = () => {
-  const { loansDetails, btcPrice, isLoading, error } = useLoansDetails();
+  const { loansDetails, btcPrice, isLoading, error, removeLoan } = useLoansDetails();
   const navigate = useNavigate();
+  const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this loan?')) {
-      // removeLoan(id); // TODO: implement if needed
-    }
+  const handleDelete = async (loan: LoanWithDetails) => {
+    confirm({
+      title: 'Smazat půjčku',
+      icon: <ExclamationCircleOutlined />,
+      content: `Opravdu chcete smazat půjčku #${loan.loanId}? Tuto akci nelze vrátit zpět.`,
+      okText: 'Smazat',
+      okType: 'danger',
+      cancelText: 'Zrušit',
+      async onOk() {
+        setDeleteLoading(loan.id!);
+        try {
+          await removeLoan(loan.id!);
+          message.success(`Půjčka #${loan.loanId} byla úspěšně smazána`);
+        } catch (error) {
+          console.error('Error deleting loan:', error);
+          message.error('Nepodařilo se smazat půjčku. Zkuste to prosím znovu.');
+        } finally {
+          setDeleteLoading(null);
+        }
+      },
+    });
   };
 
+  const columns = [
+    {
+      title: 'Půjčka',
+      key: 'loanInfo',
+      width: 120,
+      render: (record: LoanWithDetails) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>#{record.loanId}</Text>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            ID: {record.id}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Částka',
+      key: 'amount',
+      width: 140,
+      render: (record: LoanWithDetails) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>{formatCurrency(record.loanAmountCzk)}</Text>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Splatit: {formatCurrency(record.repaymentAmountCzk)}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Datum splacení',
+      key: 'repaymentDate',
+      width: 140,
+      render: (record: LoanWithDetails) => {
+        const daysLeft = getDaysLeft(record.repaymentDate);
+        const isUrgent = daysLeft <= 7;
+        const isPastDue = daysLeft < 0;
+        
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{new Date(record.repaymentDate).toLocaleDateString('cs-CZ')}</Text>
+            <Badge 
+              count={isPastDue ? 'Po termínu' : `${daysLeft} dní`}
+              style={{ 
+                backgroundColor: isPastDue ? '#ff4d4f' : isUrgent ? '#faad14' : '#52c41a',
+                fontSize: '10px'
+              }}
+            />
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) => {
+        const displayStatus = statusDisplay[status as keyof typeof statusDisplay] || 
+                             { text: 'Neznámý', color: '#d9d9d9' };
+
+        return (
+          <Tag color={status === 'Active' ? 'green' : 'default'}>
+            {displayStatus.text}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Současná hodnota',
+      key: 'currentValue',
+      width: 140,
+      render: (record: LoanWithDetails) => {
+        const sellOrders = record.sellOrders || [];
+        const realized = sellOrders.filter((o: SellOrder) => o.status === 'Completed');
+        const realizedBtc = realized.reduce((sum: number, o: SellOrder) => sum + (o.btcAmount || 0), 0);
+        const realizedCzk = realized.reduce((sum: number, o: SellOrder) => sum + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
+        const boughtBtc = (record.purchasedBtc || 0) - (record.feesBtc || 0) - (record.transactionFeesBtc || 0);
+        const currentValue = ((boughtBtc - realizedBtc) * (btcPrice || 0)) + realizedCzk;
+        const currentProfit = record.repaymentAmountCzk ? ((currentValue / record.repaymentAmountCzk) - 1) * 100 : 0;
+        
+        return formatValueProfit(currentValue, currentProfit);
+      },
+    },
+    {
+      title: 'Potenciální hodnota',
+      key: 'potentialValue',
+      width: 140,
+      render: (record: LoanWithDetails) => {
+        const backendPotentialValueCzk = record.potentialValueCzk || 0;
+        const potentialProfit = record.repaymentAmountCzk && record.repaymentAmountCzk > 0
+          ? ((backendPotentialValueCzk / record.repaymentAmountCzk) - 1) * 100
+          : 0;
+        
+        return formatValueProfit(backendPotentialValueCzk, potentialProfit);
+      },
+    },
+    {
+      title: 'Exit strategie',
+      key: 'exitStrategy',
+      width: 140,
+      render: (record: LoanWithDetails) => {
+        return (
+          <div style={{ position: 'relative' }}>
+            {getExitStrategyDisplay(record)}
+            
+            {/* Actions overlay positioned relative to this cell */}
+            <div 
+              className={`row-actions-overlay ${hoveredRowId === String(record.id) ? 'visible' : 'hidden'}`}
+              style={{
+                position: 'absolute',
+                right: '-16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                paddingRight: '16px',
+                paddingLeft: '40px',
+                background: 'linear-gradient(to left, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 70%, transparent 100%)',
+                backdropFilter: 'blur(2px)',
+                zIndex: 10,
+                height: '40px',
+                minWidth: '140px',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                pointerEvents: hoveredRowId === String(record.id) ? 'auto' : 'none',
+                opacity: hoveredRowId === String(record.id) ? 1 : 0,
+                transition: 'all 0.2s ease-in-out',
+              }}
+              onMouseEnter={() => setHoveredRowId(String(record.id))}
+              onMouseLeave={() => setHoveredRowId(null)}
+            >
+              <Space size="small">
+                <Tooltip title="Upravit půjčku">
+                  <Button 
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => navigate(`/loans/${record.id}/edit`)}
+                    style={{ 
+                      background: 'rgba(255,255,255,0.9)',
+                      border: '1px solid #d9d9d9',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip title="Nastavit strategii">
+                  <Button 
+                    type="text"
+                    size="small"
+                    icon={<SettingOutlined />}
+                    onClick={() => navigate(`/loans/${record.id}/sell-strategy`)}
+                    style={{ 
+                      background: 'rgba(255,255,255,0.9)',
+                      border: '1px solid #d9d9d9',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip title="Smazat půjčku">
+                  <Button 
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    loading={deleteLoading === record.id}
+                    onClick={() => handleDelete(record)}
+                    style={{ 
+                      background: 'rgba(255,255,255,0.9)',
+                      border: '1px solid #ffccc7',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </Tooltip>
+              </Space>
+            </div>
+          </div>
+        );
+      },
+    },
+  ];
+
+  // Calculate summary statistics
+  const totalLoansValue = loansDetails.reduce((sum, loan) => sum + (loan.loanAmountCzk || 0), 0);
+  const totalRepaymentValue = loansDetails.reduce((sum, loan) => sum + (loan.repaymentAmountCzk || 0), 0);
+  const activeLoansCount = loansDetails.filter(loan => loan.status === 'Active').length;
+
+  // Calculate current value of active loans
+  const activeLoansCurrentValue = loansDetails
+    .filter(loan => loan.status === 'Active')
+    .reduce((sum, loan) => {
+      const sellOrders = (loan as LoanWithDetails).sellOrders || [];
+      const realized = sellOrders.filter((o: SellOrder) => o.status === 'Completed');
+      const realizedBtc = realized.reduce((acc: number, o: SellOrder) => acc + (o.btcAmount || 0), 0);
+      const realizedCzk = realized.reduce((acc: number, o: SellOrder) => acc + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
+      const boughtBtc = (loan.purchasedBtc || 0) - (loan.feesBtc || 0) - (loan.transactionFeesBtc || 0);
+      const currentValue = ((boughtBtc - realizedBtc) * (btcPrice || 0)) + realizedCzk;
+
+      return sum + currentValue;
+    }, 0);
+
   if (isLoading) {
-    return <div className="text-center py-10">Loading loans...</div>;
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16 }}>
+          <Text>Načítám půjčky...</Text>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">My Loans</h1>
-        <Link 
-          to="/loans/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-        >
-          Add New Loan
-        </Link>
-      </div>
+    <div style={{ padding: '24px' }}>
+      {/* Header */}
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+        <Col>
+          <Title level={2} style={{ margin: 0 }}>
+            <DollarOutlined /> Moje půjčky
+          </Title>
+        </Col>
+        <Col>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => navigate('/loans/new')}
+          >
+            Přidat půjčku
+          </Button>
+        </Col>
+      </Row>
 
+      {/* Summary Cards */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Celková hodnota půjček"
+              value={totalLoansValue}
+              formatter={(value) => formatCurrency(Number(value))}
+              prefix={<DollarOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="K splacení celkem"
+              value={totalRepaymentValue}
+              formatter={(value) => formatCurrency(Number(value))}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Současná hodnota aktivních"
+              value={activeLoansCurrentValue}
+              formatter={(value) => formatCurrency(Number(value))}
+              prefix={<WalletOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Aktivní půjčky"
+              value={activeLoansCount}
+              suffix={`/ ${loansDetails.length}`}
+              prefix={<TrophyOutlined />}
+              valueStyle={{ color: '#13c2c2' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Error Alert */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> {error}</span>
-        </div>
+        <Alert
+          message="Chyba při načítání"
+          description={error}
+          type="error"
+          style={{ marginBottom: 24 }}
+          showIcon
+        />
       )}
 
-      {loansDetails.length === 0 && !isLoading && (
-        <div className="text-center text-gray-500 py-10">
-          You haven't added any loans yet.
-        </div>
-      )}
+      {/* Main Content */}
+      <Card>
+        {loansDetails.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Zatím nemáte žádné půjčky"
+          >
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/loans/new')}>
+              Přidat první půjčku
+            </Button>
+          </Empty>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={loansDetails}
+            rowKey="id"
+            scroll={{ x: 1200 }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => 
+                `${range[0]}-${range[1]} z ${total} půjček`,
+            }}
+            rowClassName={(record) => {
+              const daysLeft = getDaysLeft(record.repaymentDate);
+              if (daysLeft < 0) return 'row-past-due';
+              if (daysLeft <= 7) return 'row-urgent';
 
-      {loansDetails.length > 0 && (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan ID (FF)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (CZK)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repayment Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Value / Profit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Potential Value / Profit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit Strategy</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loansDetails.map((loan: any) => {
-                  // Repayment days left
-                  const daysLeft = getDaysLeft(loan.repaymentDate);
-                  // Realized (completed) sell orders
-                  const sellOrders = loan.sellOrders || [];
-                  const realized = sellOrders.filter((o: any) => o.status === 'Completed');
-                  const realizedBtc = realized.reduce((sum: number, o: any) => sum + (o.btcAmount || 0), 0);
-                  const realizedCzk = realized.reduce((sum: number, o: any) => sum + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
-                  // Nakoupené BTC
-                  const boughtBtc = (loan.purchasedBtc || 0) - (loan.feesBtc || 0) - (loan.transactionFeesBtc || 0);
-                  // Current Value
-                  const currentValue = ((boughtBtc - realizedBtc) * (btcPrice || 0)) + realizedCzk;
-                  const currentProfit = loan.repaymentAmountCzk ? ((currentValue / loan.repaymentAmountCzk) - 1) * 100 : 0;
-                  // Potential Value - USE THE NEW BACKEND FIELD
-                  // The backend now calculates the sum of TotalCzk for planned/submitted/partiallyfilled orders.
-                  const backendPotentialValueCzk = loan.potentialValueCzk || 0; // Use the new field
-                  // The "Profit" for potential value should be based on this backendPotentialValueCzk
-                  // relative to the repayment amount. This assumes backendPotentialValueCzk is the total expected CZK from strategy execution.
-                  // If the strategy doesn't sell all BTC, this profit calculation might be interpreted differently.
-                  // For simplicity, let's calculate profit based on this value directly.
-                  const potentialProfit = loan.repaymentAmountCzk && loan.repaymentAmountCzk > 0 
-                                      ? ((backendPotentialValueCzk / loan.repaymentAmountCzk) - 1) * 100 
-                                      : 0;
-                  // Exit strategy
-                  let exitStrategyContent = (
-                    <span className="inline-block bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">Ještě nic nastaveno</span>
-                  );
-                  if (loan.exitStrategy && loan.exitStrategy.type) {
-                    const type = loan.exitStrategy.type;
-                    let badgeColor = 'bg-blue-100 text-blue-800';
-                    if (type === 'CustomLadder') badgeColor = 'bg-green-100 text-green-800';
-                    if (type === 'SmartDistribution') badgeColor = 'bg-purple-100 text-purple-800';
-                    if (type === 'HODL') badgeColor = 'bg-yellow-100 text-yellow-800';
-                    let countBadge = null;
-                    if (loan.exitStrategy.orders || loan.exitStrategy.orderCount) {
-                      const total = loan.exitStrategy.orders ? loan.exitStrategy.orders.length : loan.exitStrategy.orderCount;
-                      // Realizované ordery (jen pokud jsou orders)
-                      let realized = 0;
-                      if (loan.exitStrategy.orders) {
-                        realized = loan.exitStrategy.orders.filter((o: any) => o.status === 'Completed').length;
-                      }
-                      countBadge = (
-                        <span className="ml-2 inline-block bg-gray-300 text-gray-800 text-[10px] px-2 py-0.5 rounded-full align-middle">{realized} / {total}</span>
-                      );
-                    }
-                    exitStrategyContent = (
-                      <span className="flex items-center gap-1">
-                        <span className={`inline-block ${badgeColor} text-xs px-2 py-1 rounded-full font-semibold`}>{type}</span>
-                        {countBadge}
-                      </span>
-                    );
-                  }
-                  // Status
-                  const statusKey = loan.status as 'Active' | 'Closed';
-                  const displayStatus = statusDisplay[statusKey] || { text: 'Unknown', color: 'bg-gray-100 text-gray-800' };
-                  return (
-                    <tr key={loan.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{loan.loanId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span>{loan.loanAmountCzk.toLocaleString()} CZK</span>
-                        <br />
-                        <span className="text-xs text-gray-400">k splacení: {loan.repaymentAmountCzk.toLocaleString()} CZK</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(loan.repaymentDate).toLocaleDateString()} <span className="text-xs text-gray-400">({daysLeft} dní)</span></td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${displayStatus.color || 'bg-gray-100 text-gray-800'}`}>{displayStatus.text}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValueProfit(currentValue, currentProfit)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValueProfit(backendPotentialValueCzk, potentialProfit)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{exitStrategyContent}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button onClick={() => navigate(`/loans/${loan.id}/edit`)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                        <button onClick={() => navigate(`/loans/${loan.id}/sell-strategy`)} className="text-green-600 hover:text-green-900">Strategy</button>
-                        <button onClick={() => handleDelete(loan.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              return '';
+            }}
+            onRow={(record) => ({
+              onMouseEnter: () => setHoveredRowId(String(record.id)),
+              onMouseLeave: () => setHoveredRowId(null),
+            })}
+          />
+        )}
+      </Card>
+
+      {/* Custom Styles */}
+      <style>{`
+        .row-past-due td {
+          background-color: #fff2f0 !important;
+        }
+        .row-urgent td {
+          background-color: #fffbf0 !important;
+        }
+        .ant-table-tbody > tr:hover.row-past-due > td {
+          background-color: #ffece6 !important;
+        }
+        .ant-table-tbody > tr:hover.row-urgent > td {
+          background-color: #fff7e6 !important;
+        }
+        
+        /* Smooth row hover transitions */
+        .ant-table-tbody > tr {
+          transition: all 0.2s ease-in-out;
+        }
+        
+        .ant-table-tbody > tr:hover {
+          background-color: #fafafa;
+          transform: translateX(-2px);
+          box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Actions overlay styles */
+        .row-actions-overlay.hidden {
+          opacity: 0;
+          transform: translateY(-50%) translateX(10px);
+          pointer-events: none;
+        }
+        
+        .row-actions-overlay.visible {
+          opacity: 1;
+          transform: translateY(-50%) translateX(0px);
+          pointer-events: auto;
+        }
+        
+        /* Prevent table cell overflow */
+        .ant-table-tbody > tr > td:last-child {
+          overflow: visible !important;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .row-actions-overlay {
+            min-width: 100px !important;
+            padding-left: 20px !important;
+          }
+          
+          .row-actions-overlay .ant-space {
+            flex-wrap: wrap;
+          }
+        }
+      `}</style>
     </div>
   );
 };

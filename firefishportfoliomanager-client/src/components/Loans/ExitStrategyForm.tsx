@@ -1,9 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Loan } from '../../types/loanTypes';
-import { Radio, Button, TextField, Typography, Box, Grid, IconButton, Alert } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { fetchExitStrategy, saveExitStrategy } from '../../services/exitStrategyService';
-import { useAuth } from '../../context/AuthContext';
+import { 
+  Radio, 
+  Button, 
+  Input, 
+  Typography, 
+  Row, 
+  Col, 
+  Alert, 
+  Form, 
+  Space, 
+  Card,
+  Spin,
+  message
+} from 'antd';
+import type { RadioChangeEvent } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { fetchExitStrategy, saveExitStrategy, ExitStrategyApiResponse } from '../../services/exitStrategyService';
+import { useAuthStore, AuthState } from '@store/authStore';
+
+const { Title, Text } = Typography;
 
 // Typy strategií
 const STRATEGY_TYPES = [
@@ -19,6 +35,7 @@ const defaultCustomLadder = () => ({
     { TargetPriceCzk: '', PercentToSell: '' },
   ],
 });
+
 const defaultSmartDistribution = () => ({
   Type: 'SmartDistribution',
   TargetProfitPercent: '',
@@ -26,10 +43,8 @@ const defaultSmartDistribution = () => ({
   BtcProfitRatioPercent: '',
 });
 
-type ExitStrategyApiResponse = { Type: string; Orders?: any[]; TargetProfitPercent?: number; OrderCount?: number; BtcProfitRatioPercent?: number };
-
 export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSaved?: () => void }) {
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
   const [strategyType, setStrategyType] = useState('HODL');
   const [customLadder, setCustomLadder] = useState(defaultCustomLadder());
   const [smartDist, setSmartDist] = useState(defaultSmartDistribution());
@@ -46,33 +61,32 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
     setInputErrors({});
     fetchExitStrategy(getAccessToken, loan.id)
       .then((data: ExitStrategyApiResponse | null) => {
-        console.log('Načtená strategie z API:', data); // Logování pro debug
         if (!data) return;
-        // Fallback pro různé varianty názvu typu
-        const strategyApiType = (data as any).Type || (data as any).type;
+        
+        const strategyApiType = (data as Record<string, unknown>).Type || (data as Record<string, unknown>).type;
         if (!strategyApiType) return;
+        
         if (strategyApiType === 'HODL') setStrategyType('HODL');
+        
         if (strategyApiType === 'CustomLadder') {
           setStrategyType('CustomLadder');
-          // Map API response (lowercase 'orders', camelCase properties) to component state (PascalCase properties, string values)
-          const mappedOrders = (data as any).orders?.map((o: any) => ({
-            TargetPriceCzk: o.targetPriceCzk?.toString() ?? '',
-            PercentToSell: o.percentToSell?.toString() ?? '',
+          const mappedOrders = (data as Record<string, unknown>).Orders as Array<Record<string, unknown>> | undefined;
+          const orders = mappedOrders?.map((o: Record<string, unknown>) => ({
+            TargetPriceCzk: o.TargetPriceCzk?.toString() ?? '',
+            PercentToSell: o.PercentToSell?.toString() ?? '',
           })) || [];
-          // Ensure at least one order row exists if API returns empty array
-          const ordersToSet = mappedOrders.length > 0 ? mappedOrders : defaultCustomLadder().Orders;
+          const ordersToSet = orders.length > 0 ? orders : defaultCustomLadder().Orders;
           setCustomLadder({ Type: 'CustomLadder', Orders: ordersToSet });
         }
+        
         if (strategyApiType === 'SmartDistribution') {
-          const targetProfitPercent = (data.TargetProfitPercent !== undefined)
-            ? data.TargetProfitPercent
-            : (data as any).targetProfitPercent;
-          const orderCount = (data.OrderCount !== undefined)
-            ? data.OrderCount
-            : (data as any).orderCount;
-          const btcProfitRatioPercent = (data.BtcProfitRatioPercent !== undefined)
-            ? data.BtcProfitRatioPercent
-            : (data as any).btcProfitRatioPercent;
+          const dataRecord = data as Record<string, unknown>;
+          
+          // Zkus obě konvence pojmenování - PascalCase i camelCase
+          const targetProfitPercent = dataRecord.TargetProfitPercent || dataRecord.targetProfitPercent;
+          const orderCount = dataRecord.OrderCount || dataRecord.orderCount;
+          const btcProfitRatioPercent = dataRecord.BtcProfitRatioPercent || dataRecord.btcProfitRatioPercent;
+          
           setStrategyType('SmartDistribution');
           setSmartDist({
             Type: 'SmartDistribution',
@@ -89,8 +103,8 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
       .finally(() => setLoading(false));
   }, [loan.id, getAccessToken]);
 
-  // Handlery pro změnu typu strategie
-  const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handler pro změnu typu strategie
+  const handleTypeChange = (e: RadioChangeEvent) => {
     setStrategyType(e.target.value);
     setError(null);
     setSuccess(false);
@@ -104,6 +118,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
 
     if (value.includes(',')) {
       setInputErrors(prev => ({ ...prev, [key]: commaErrorMessage }));
+
       return;
     }
 
@@ -112,6 +127,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
         if (!prev[key]) return prev;
         const next = { ...prev };
         delete next[key];
+
         return next;
       });
       const updated = customLadder.Orders.map((o, i) => (i === idx ? { ...o, [field]: value } : o));
@@ -121,19 +137,23 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
         if (!prev[key]) return prev;
         const next = { ...prev };
         delete next[key];
+
         return next;
       });
     }
   };
+
   const handleAddOrder = () => {
     setCustomLadder({ ...customLadder, Orders: [...customLadder.Orders, { TargetPriceCzk: '', PercentToSell: '' }] });
   };
+
   const handleRemoveOrder = (idx: number) => {
     setCustomLadder({ ...customLadder, Orders: customLadder.Orders.filter((_, i) => i !== idx) });
     setInputErrors(prev => {
       const next = {...prev};
       delete next[`custom_TargetPriceCzk_${idx}`];
       delete next[`custom_PercentToSell_${idx}`];
+
       return next;
     });
   };
@@ -146,6 +166,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
 
     if (value.includes(',')) {
         setInputErrors(prev => ({ ...prev, [key]: commaErrorMessage }));
+
         return;
     }
 
@@ -166,6 +187,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
             if (!prev[key]) return prev;
             const next = { ...prev };
             delete next[key];
+
             return next;
         });
         setSmartDist({ ...smartDist, [field]: value });
@@ -177,6 +199,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
             } else if (next[key]) {
                  delete next[key];
             }
+
              return next;
          });
     }
@@ -203,17 +226,19 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
              setInputErrors(prev => ({...prev, [`custom_PercentToSell_${idx}`]: 'Zadejte procento (0-100)'}));
              hasInputError = true;
          }
-         return { targetPriceCzk: price, percentToSell: percent };
+
+         return { TargetPriceCzk: price, PercentToSell: percent };
       });
 
-      const sum = orders.reduce((acc, o) => acc + o.percentToSell, 0);
+      const sum = orders.reduce((acc, o) => acc + o.PercentToSell, 0);
       if (sum > 100) {
         setError('Součet procent nesmí přesáhnout 100');
         hasInputError = true;
       }
 
       if (hasInputError) return null;
-      return { type: 'CustomLadder', orders };
+
+      return { type: 'CustomLadder', Orders: orders };
     }
 
     if (strategyType === 'SmartDistribution') {
@@ -229,7 +254,6 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
              setInputErrors(prev => ({...prev, smart_OrderCount: 'Zadejte kladné celé číslo'}));
             hasInputError = true;
         }
-         // Allow 0 for btcProfitRatioPercent, ensure it's a number between 0 and 100 inclusive if provided
          if (smartDist.BtcProfitRatioPercent !== '' && 
              (isNaN(btcProfitRatioPercent) || btcProfitRatioPercent < 0 || btcProfitRatioPercent > 100)) {
             setInputErrors(prev => ({...prev, smart_BtcProfitRatioPercent: 'Zadejte procento (0-100)'}));
@@ -237,19 +261,20 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
         }
 
       if (hasInputError) return null;
+
       return {
         type: 'SmartDistribution',
-        targetProfitPercent: targetProfitPercent,
-        orderCount: orderCount,
-        btcProfitRatioPercent: btcProfitRatioPercent,
+        TargetProfitPercent: targetProfitPercent,
+        OrderCount: orderCount,
+        BtcProfitRatioPercent: btcProfitRatioPercent,
       };
     }
+
     return null;
   };
 
   // Uložení strategie
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setError(null);
     setInputErrors({});
     setSuccess(false);
@@ -260,6 +285,7 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
         if (!Object.keys(inputErrors).length && !error) {
             setError('Zkontrolujte prosím zadané hodnoty.');
         }
+
         return;
     }
 
@@ -269,138 +295,182 @@ export default function ExitStrategyForm({ loan, onSaved }: { loan: Loan, onSave
       setSuccess(true);
       setError(null);
       setInputErrors({});
+      message.success('Strategie úspěšně uložena');
       if (onSaved) onSaved();
-    } catch (err: any) {
-      setError(err?.message || 'Chyba při ukládání strategie');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Chyba při ukládání strategie';
+      setError(errorMessage);
       console.error('Save strategy error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+        <Spin size="large" />
+        <Text style={{ marginLeft: 16 }}>Načítám strategii...</Text>
+      </div>
+    );
+  }
+
   return (
-    loading ? (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-        <Typography variant="body1">Načítám strategii...</Typography>
-      </Box>
-    ) : (
-      <Box component="form" onSubmit={handleSave} noValidate sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom sx={{ mt: 3, mb: 2 }}>
+    <Card style={{ padding: 16 }}>
+      <Form onFinish={handleSave} layout="vertical">
+        <Title level={4} style={{ marginTop: 24, marginBottom: 16 }}>
           Typ výstupní strategie
-        </Typography>
-        <Box mb={2}>
-          {STRATEGY_TYPES.map(type => (
-            <Box key={type.value} display="flex" alignItems="center">
-              <Radio
-                checked={strategyType === type.value}
-                onChange={handleTypeChange}
-                value={type.value}
-                name="strategyType"
-                id={`strategy-${type.value}`}
-              />
-              <label htmlFor={`strategy-${type.value}`} style={{ cursor: 'pointer' }}>
-                <Typography variant="subtitle1">{type.label}</Typography>
-              </label>
-            </Box>
-          ))}
-        </Box>
+        </Title>
+        
+        <Space direction="vertical" style={{ marginBottom: 16 }}>
+          <Radio.Group onChange={handleTypeChange} value={strategyType}>
+            {STRATEGY_TYPES.map(type => (
+              <Radio key={type.value} value={type.value} style={{ display: 'block', marginBottom: 8 }}>
+                {type.label}
+              </Radio>
+            ))}
+          </Radio.Group>
+        </Space>
 
         {strategyType === 'CustomLadder' && (
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>Custom Ladder ordery:</Typography>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={5} style={{ marginBottom: 16 }}>Custom Ladder ordery:</Title>
             {customLadder.Orders.map((order, idx) => (
-              <Grid container spacing={2} key={idx} alignItems="center" sx={{ mb: 1 }}>
-                <Grid item xs={5}>
-                  <TextField 
-                    label="Cílová cena (CZK/BTC)" 
-                    variant="outlined" 
-                    size="small" 
-                    fullWidth 
-                    value={order.TargetPriceCzk}
-                    onChange={e => handleCustomOrderChange(idx, 'TargetPriceCzk', e.target.value)}
-                    error={!!inputErrors[`custom_TargetPriceCzk_${idx}`]}
-                    helperText={inputErrors[`custom_TargetPriceCzk_${idx}`]}
-                  />
-                </Grid>
-                <Grid item xs={5}>
-                  <TextField 
-                    label="Procento k prodeji (%)" 
-                    variant="outlined" 
-                    size="small" 
-                    fullWidth 
-                    value={order.PercentToSell}
-                    onChange={e => handleCustomOrderChange(idx, 'PercentToSell', e.target.value)}
-                    error={!!inputErrors[`custom_PercentToSell_${idx}`]}
-                    helperText={inputErrors[`custom_PercentToSell_${idx}`]}
-                  />
-                </Grid>
-                <Grid item xs={2}>
-                  {customLadder.Orders.length > 1 && (
-                    <IconButton aria-label="delete order" onClick={() => handleRemoveOrder(idx)} disabled={loading}>
-                       <DeleteIcon />
-                    </IconButton>
-                  )}
-                </Grid>
-              </Grid>
+              <Row key={idx} gutter={16} style={{ marginBottom: 16, alignItems: 'flex-start' }}>
+                <Col flex="1">
+                  <Form.Item 
+                    label="Cílová cena (CZK/BTC)"
+                    style={{ marginBottom: 0 }}
+                    validateStatus={inputErrors[`custom_TargetPriceCzk_${idx}`] ? 'error' : ''}
+                    help={inputErrors[`custom_TargetPriceCzk_${idx}`] || ''}
+                  >
+                    <Input
+                      placeholder="Např. 2500000"
+                      value={order.TargetPriceCzk}
+                      onChange={e => handleCustomOrderChange(idx, 'TargetPriceCzk', e.target.value)}
+                      status={inputErrors[`custom_TargetPriceCzk_${idx}`] ? 'error' : ''}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col flex="1">
+                  <Form.Item 
+                    label="Procento k prodeji (%)"
+                    style={{ marginBottom: 0 }}
+                    validateStatus={inputErrors[`custom_PercentToSell_${idx}`] ? 'error' : ''}
+                    help={inputErrors[`custom_PercentToSell_${idx}`] || ''}
+                  >
+                    <Input
+                      placeholder="Např. 25"
+                      value={order.PercentToSell}
+                      onChange={e => handleCustomOrderChange(idx, 'PercentToSell', e.target.value)}
+                      status={inputErrors[`custom_PercentToSell_${idx}`] ? 'error' : ''}
+                    />
+                  </Form.Item>
+                </Col>
+                {customLadder.Orders.length > 1 && (
+                  <Col>
+                    <Form.Item label=" " style={{ marginBottom: 0 }}>
+                      <Button 
+                        icon={<DeleteOutlined />} 
+                        onClick={() => handleRemoveOrder(idx)} 
+                        disabled={loading}
+                        danger
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
+              </Row>
             ))}
-            <Button onClick={handleAddOrder} variant="outlined" size="small" sx={{ mt: 1 }} disabled={loading}>
+            <Button 
+              type="dashed" 
+              icon={<PlusOutlined />} 
+              onClick={handleAddOrder} 
+              disabled={loading}
+              style={{ marginTop: 8 }}
+            >
               Přidat order
             </Button>
-          </Box>
+          </div>
         )}
 
         {strategyType === 'SmartDistribution' && (
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>Parametry chytré distribuce:</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField 
-                    label="Cílový zisk (%)" 
-                    variant="outlined" 
-                    size="small" 
-                    fullWidth 
+          <div style={{ marginBottom: 24 }}>
+            <Title level={5} style={{ marginBottom: 16 }}>Parametry chytré distribuce:</Title>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item 
+                  label="Cílový zisk (%)"
+                  validateStatus={inputErrors.smart_TargetProfitPercent ? 'error' : ''}
+                  help={inputErrors.smart_TargetProfitPercent || ''}
+                >
+                  <Input
+                    placeholder="Např. 20"
                     value={smartDist.TargetProfitPercent}
                     onChange={e => handleSmartChange('TargetProfitPercent', e.target.value)}
-                    error={!!inputErrors.smart_TargetProfitPercent}
-                    helperText={inputErrors.smart_TargetProfitPercent}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField 
-                    label="Počet orderů" 
-                    variant="outlined" 
-                    size="small" 
-                    fullWidth 
+                    status={inputErrors.smart_TargetProfitPercent ? 'error' : ''}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item 
+                  label="Počet orderů"
+                  validateStatus={inputErrors.smart_OrderCount ? 'error' : ''}
+                  help={inputErrors.smart_OrderCount || ''}
+                >
+                  <Input
+                    placeholder="Např. 5"
                     value={smartDist.OrderCount}
                     onChange={e => handleSmartChange('OrderCount', e.target.value)}
-                    error={!!inputErrors.smart_OrderCount}
-                    helperText={inputErrors.smart_OrderCount}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField 
-                    label="BTC na profit (%)" 
-                    variant="outlined" 
-                    size="small" 
-                    fullWidth 
+                    status={inputErrors.smart_OrderCount ? 'error' : ''}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item 
+                  label="BTC na profit (%)"
+                  validateStatus={inputErrors.smart_BtcProfitRatioPercent ? 'error' : ''}
+                  help={inputErrors.smart_BtcProfitRatioPercent || ''}
+                >
+                  <Input
+                    placeholder="Např. 80"
                     value={smartDist.BtcProfitRatioPercent}
                     onChange={e => handleSmartChange('BtcProfitRatioPercent', e.target.value)}
-                    error={!!inputErrors.smart_BtcProfitRatioPercent}
-                    helperText={inputErrors.smart_BtcProfitRatioPercent}
-                />
-              </Grid>
-            </Grid>
-          </Box>
+                    status={inputErrors.smart_BtcProfitRatioPercent ? 'error' : ''}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
         )}
 
-        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mt: 2 }}>Strategie úspěšně uložena.</Alert>}
+        {error && (
+          <Alert 
+            message={error} 
+            type="error" 
+            style={{ marginBottom: 16 }} 
+            showIcon 
+          />
+        )}
+        
+        {success && (
+          <Alert 
+            message="Strategie úspěšně uložena" 
+            type="success" 
+            style={{ marginBottom: 16 }} 
+            showIcon 
+          />
+        )}
 
-        <Button type="submit" variant="contained" color="primary" sx={{ mt: 3 }} disabled={loading || Object.keys(inputErrors).length > 0}>
+        <Button 
+          type="primary" 
+          htmlType="submit" 
+          loading={loading} 
+          disabled={Object.keys(inputErrors).length > 0}
+          style={{ marginTop: 16 }}
+        >
           {loading ? 'Ukládám...' : 'Uložit strategii'}
         </Button>
-
-      </Box>
-    )
+      </Form>
+    </Card>
   );
 } 

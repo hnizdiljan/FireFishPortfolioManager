@@ -3,7 +3,7 @@ import { Loan /*, LoanStatus */ } from '../types/loanTypes'; // LoanStatus remov
 import { UserDto } from '../types/userTypes';
 import { fetchCurrentUser, fetchInternalBtcPrice } from '../services/userService';
 import { fetchLoans as apiFetchLoans } from '../services/loanService'; // Alias to avoid naming conflict
-import { useAuth } from '../context/AuthContext';
+import { useAuthStore, AuthState } from '@store/authStore'; // Import Zustand auth store
 
 interface DashboardData {
   user: UserDto;
@@ -23,7 +23,7 @@ export const useDashboardData = () => {
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken); // Použití Zustand store
 
   const loadData = useCallback(async () => {
     setIsLoading(true);

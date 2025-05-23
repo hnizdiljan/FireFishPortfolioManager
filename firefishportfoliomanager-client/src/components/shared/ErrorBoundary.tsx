@@ -1,4 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Alert, Button, Space } from 'antd';
+import { ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 
 // Make sure this file is treated as a module
 export {};
@@ -39,22 +41,34 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
+  handleRetry = (): void => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render(): ReactNode {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return this.props.fallback || (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h2 className="text-lg font-bold text-red-800 mb-2">Something went wrong</h2>
-          <p className="text-red-700">
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </p>
-          <button 
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            onClick={() => this.setState({ hasError: false, error: null })}
-          >
-            Try again
-          </button>
-        </div>
+        <Alert
+          message="Something went wrong"
+          description={
+            <Space direction="vertical">
+              <span>{this.state.error?.message || 'An unexpected error occurred'}</span>
+              <Button 
+                type="primary" 
+                danger 
+                icon={<ReloadOutlined />}
+                onClick={this.handleRetry}
+              >
+                Try again
+              </Button>
+            </Space>
+          }
+          type="error"
+          icon={<ExclamationCircleOutlined />}
+          showIcon
+          style={{ margin: '16px' }}
+        />
       );
     }
 

@@ -24,4 +24,17 @@ export const formatPercentage = (value: number): string => {
   return `${value.toFixed(2)}%`;
 };
 
+// Format date with locale
+export const formatDate = (date: string | Date): string => {
+  return new Date(date).toLocaleDateString('cs-CZ');
+};
+
+// Calculate days until date
+export const getDaysUntil = (date: string | Date): number => {
+  const today = new Date();
+  const targetDate = new Date(date);
+
+  return Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+};
+
 // Můžeme sem přidat další pomocné funkce pro práci s půjčkami 

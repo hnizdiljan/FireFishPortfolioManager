@@ -1,20 +1,21 @@
 using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Backend API
-var api = builder.AddProject(
-    "api",
+var apiService = builder.AddProject(
+    "firefishapi",
     "../FireFishPortfolioManager.Api/FireFishPortfolioManager.Api.csproj")
-    .WithEndpoint(port: 5000, scheme: "https", name: "api-http");
+    .WithHttpsEndpoint(targetPort: 7136, port: 5001, name: "apisecure");
 
-// React Client (npm start)
-var client = builder.AddExecutable(
-    "client",
-    "npm",
-    args: "start",
-    workingDirectory: "../firefishportfoliomanager-client")
-    .WithEnvironment("REACT_APP_API_BASE_URL", () => api.GetEndpoint("api-http")!.Url);
+// Frontend Vite aplikace
+var frontend = builder.AddNpmApp(
+    "firefishclient",
+    "../firefishportfoliomanager-client",
+    "dev")
+    .WithHttpEndpoint(port: 3000, targetPort: 5174, name: "http")
+    .WithEnvironment("VITE_API_BASE_URL", apiService.GetEndpoint("apisecure"))
+    .WithEnvironment("VITE_REDIRECT_URI", "http://localhost:5174")
+    ;
 
 builder.Build().Run();

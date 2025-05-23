@@ -1,16 +1,12 @@
 import { callApi } from "./apiService";
-import { Loan, LoanInput, SellOrder } from "../types/loanTypes";
-// import { SellStrategy } from "../types/strategyTypes";
-
-// Typ pro funkci, která umí získat token
-type GetAccessTokenFunction = () => Promise<string | null>;
+import { LoanDto, LoanInput, SellOrder, GetAccessTokenFunction } from "../types";
 
 /**
  * Fetch all loans for the current user
  * @param getAccessToken Function to retrieve the access token
  */
-export const fetchLoans = async (getAccessToken: GetAccessTokenFunction): Promise<Loan[]> => {
-  return callApi<Loan[]>('/api/Loans', getAccessToken);
+export const fetchLoans = async (getAccessToken: GetAccessTokenFunction): Promise<LoanDto[]> => {
+  return callApi<LoanDto[]>('/api/Loans', getAccessToken);
 };
 
 /**
@@ -18,8 +14,8 @@ export const fetchLoans = async (getAccessToken: GetAccessTokenFunction): Promis
  * @param getAccessToken Function to retrieve the access token
  * @param id ID of the loan
  */
-export const fetchLoanById = async (getAccessToken: GetAccessTokenFunction, id: number): Promise<Loan> => {
-  return callApi<Loan>(`/api/Loans/${id}`, getAccessToken);
+export const fetchLoanById = async (getAccessToken: GetAccessTokenFunction, id: number): Promise<LoanDto> => {
+  return callApi<LoanDto>(`/api/Loans/${id}`, getAccessToken);
 };
 
 /**
@@ -27,8 +23,8 @@ export const fetchLoanById = async (getAccessToken: GetAccessTokenFunction, id: 
  * @param getAccessToken Function to retrieve the access token
  * @param loanData Data for the new loan (LoanInput type)
  */
-export const createLoan = async (getAccessToken: GetAccessTokenFunction, loanData: LoanInput): Promise<Loan> => {
-  return callApi<Loan>('/api/Loans', getAccessToken, {
+export const createLoan = async (getAccessToken: GetAccessTokenFunction, loanData: LoanInput): Promise<LoanDto> => {
+  return callApi<LoanDto>('/api/Loans', getAccessToken, {
     method: 'POST',
     body: JSON.stringify(loanData),
   });

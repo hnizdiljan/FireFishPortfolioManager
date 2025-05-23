@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- You can link your favicon from the public folder here if needed -->
+    <!-- e.g., <link rel="icon" type="image/svg+xml" href="/favicon.svg" /> -->
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FireFish Portfolio Manager</title>
+    
+    <!-- Suppress browser extension runtime.lastError messages -->
+    <script>
+      // Suppress chrome extension runtime.lastError messages that are not from our app
+      const originalConsoleError = console.error;
+      console.error = function(...args) {
+        const message = args.join(' ');
+        if (message.includes('runtime.lastError') && message.includes('message port closed')) {
+          // These are typically from browser extensions, not our app
+          return;
+        }
+        originalConsoleError.apply(console, args);
+      };
+    </script>
+    <script type="module" crossorigin src="/assets/index-CTr6voGO.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CGDQQZGZ.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html> 

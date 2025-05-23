@@ -91,3 +91,90 @@ Nemusíte nikdy použít `eject`. Kurátorovaná sada funkcí je vhodná pro mal
 *   `package.json`: Seznam závislostí a skriptů projektu.
 *   `tsconfig.json`: Konfigurace TypeScriptu.
 *   `tailwind.config.js`: Konfigurace Tailwind CSS.
+
+## Nový formulář pro půjčky
+
+### Funkce a vylepšení
+
+#### 🎨 Moderní UX Design
+- **Krokový formulář**: Rozdělení do 4 logických kroků pro lepší orientaci
+- **Responsivní design**: Optimalizováno pro desktop i mobilní zařízení
+- **Vizuální feedback**: Animace, hover efekty a barevné indikátory
+- **Gradient header**: Atraktivní vizuální prezentace
+
+#### 📋 Kroky formuláře
+
+1. **Základní údaje**
+   - ID půjčky z FireFish
+   - Status (Aktivní/Uzavřená)
+   - Datum půjčky a doba splatnosti
+   - Automatický výpočet data splacení
+
+2. **Finanční detaily**
+   - Částka půjčky v CZK
+   - Úroková sazba v %
+   - Automatický výpočet částky k splacení
+
+3. **Bitcoin transakce**
+   - FireFish poplatky
+   - Transakční poplatky
+   - Kolaterál s možností automatického přepočtu
+   - Nakoupené množství BTC
+
+4. **Přehled**
+   - Souhrnné karty s finančními údaji
+   - Bitcoin přehled s aktuální hodnotou
+   - Kontrola všech zadaných údajů
+
+#### 🔧 Technické funkce
+
+- **Automatické výpočty**: Datum splacení, částka k splacení, celkové poplatky
+- **Validace formuláře**: Kontrola povinných polí a formátů
+- **Přepočet kolaterálu**: Na základě LTV a aktuální ceny BTC
+- **Synchronizace dat**: Automatická synchronizace s backend API
+- **Chybové hlášky**: Uživatelsky přívětivé zprávy v češtině
+
+#### 💡 UX vylepšení
+
+- **Progress indikátor**: Vizuální zobrazení postupu vyplňování
+- **Tooltips**: Nápověda pro složitější pole
+- **Sticky navigace**: Tlačítka vždy dostupná na spodku obrazovky
+- **Barevné kódování**: Různé barvy pro různé typy informací
+- **Hover efekty**: Interaktivní prvky s vizuální odezvou
+
+### Použité technologie
+
+- **Ant Design**: Moderní UI komponenty
+- **React Hooks**: Správa stavu a side effects
+- **TypeScript**: Type safety a lepší developer experience
+- **dayjs**: Práce s daty a časem
+- **CSS-in-JS**: Stylování s možností dynamických změn
+
+### Instalace a spuštění
+
+```bash
+# Instalace závislostí
+npm install
+
+# Spuštění dev serveru
+npm run dev
+
+# Build pro produkci
+npm run build
+```
+
+### API integrace
+
+Formulář je plně integrován s backend API:
+- Načítání existujících půjček pro editaci
+- Vytváření nových půjček
+- Aktualizace existujících půjček
+- Načítání aktuální ceny BTC a LTV
+
+### Budoucí vylepšení
+
+- [ ] Drag & drop pro nahrávání dokumentů
+- [ ] Pokročilé grafy a vizualizace
+- [ ] Export do PDF
+- [ ] Offline podpora
+- [ ] Notifikace a upozornění

@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ESNext",
     "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -13,14 +13,33 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve"
+    "jsx": "react-jsx",
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@helpers/*": ["src/helpers/*"],
+      "@utils/*": ["src/utils/*"],
+      "@constants/*": ["src/constants/*"],
+      "@assets/*": ["src/assets/*"],
+      "@store/*": ["src/store/*"],
+      "@routes/*": ["src/routes/*"],
+      "@types/*": ["src/types/*"],
+      "@services/*": ["src/services/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@context/*": ["src/context/*"]
+    }
   },
   "include": [
     "src"
-  ]
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

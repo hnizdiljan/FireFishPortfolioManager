@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loan } from '../../types/loanTypes';
-import { fetchLoanById } from '../../services/loanService';
-import { useAuth } from '../../context/AuthContext';
+import { Loan } from '@/types/loanTypes';
+import { fetchLoanById } from '@services/loanService';
+import { AuthState, useAuthStore } from '@store/authStore';
 import ExitStrategyForm from './ExitStrategyForm';
 
 const EditExitStrategyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
   const [loan, setLoan] = useState<Loan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

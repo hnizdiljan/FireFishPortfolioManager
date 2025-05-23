@@ -14,8 +14,9 @@ export const useBtcPrice = () => {
         if (!response.ok) throw new Error('Chyba při načítání ceny BTC');
         const data = await response.json();
         setBtcPrice(data.price ?? null);
-      } catch (err: any) {
-        setError(err.message || 'Chyba při načítání ceny BTC');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Chyba při načítání ceny BTC';
+        setError(errorMessage);
         setBtcPrice(null);
       } finally {
         setIsLoading(false);

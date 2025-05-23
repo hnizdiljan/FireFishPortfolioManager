@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-commit hooks..."
+
+# Spustit lintování
+npm run lint -- --fix
+
+# Zkontrolovat, zda lintování prošlo (exit code 0)
+if [ $? -ne 0 ]; then
+  echo "Linting failed. Please fix the errors before committing."
+  exit 1
+fi
+
+# Spustit formátování
+npm run format
+
+echo "Pre-commit hooks passed."
+exit 0 

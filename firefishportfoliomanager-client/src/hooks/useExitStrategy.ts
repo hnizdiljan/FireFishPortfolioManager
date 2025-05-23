@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuthStore, AuthState } from '@store/authStore';
 import { fetchExitStrategy as fetchExitStrategyService } from '../services/exitStrategyService';
+import { ExitStrategy } from '../types';
 
 export type ExitStrategyType = 'HODL' | 'CustomLadder' | 'SmartDistribution' | string;
 
 export const useExitStrategy = (loanId?: number) => {
-  const { getAccessToken } = useAuth();
-  const [strategy, setStrategy] = useState<any>(null);
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
+  const [strategy, setStrategy] = useState<ExitStrategy | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,11 +19,11 @@ export const useExitStrategy = (loanId?: number) => {
       .then(data => {
         if (!data) {
           setStrategy(null);
+
           return;
         }
-        // Normalize type key
-        const type = (data as any).type || (data as any).Type;
-        setStrategy(type ? { ...data, type } : data);
+        // Keep the original format from the API - no normalization needed
+        setStrategy(data);
       })
       .catch(err => setError(err.message || 'Chyba při načítání strategie'))
       .finally(() => setIsLoading(false));

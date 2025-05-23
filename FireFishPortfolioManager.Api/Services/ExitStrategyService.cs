@@ -71,19 +71,42 @@ namespace FireFishPortfolioManager.Api.Services
                     var smartOrders = new List<SellOrder>();
                     if (smart?.OrderCount > 0)
                     {
-                        decimal profitCzk = loan.LoanAmountCzk * (smart.TargetProfitPercent / 100m);
-                        decimal totalCzk = loan.LoanAmountCzk + profitCzk;
-                        decimal btcToSell = totalCzk / currentBtcPrice;
-                        decimal btcPerOrder = btcToSell / smart.OrderCount;
+                        // Výpočet cílové ceny na základě cílového zisku
+                        decimal targetProfitPercent = smart.TargetProfitPercent;
+                        decimal targetTotalValue = loan.RepaymentAmountCzk * (1 + targetProfitPercent / 100m);
+                        decimal availableBtc = loan.PurchasedBtc - loan.FeesBtc - loan.TransactionFeesBtc;
+                        
+                        // Průměrná cílová cena pro dosažení požadovaného zisku
+                        decimal averageTargetPrice = targetTotalValue / availableBtc;
+                        
+                        // Vytvoření odstupňovaných cen
+                        decimal priceRangePercent = 0.5m; // Rozptyl cen +/-50% kolem průměrné ceny
+                        decimal minPrice = averageTargetPrice * (1 - priceRangePercent);
+                        decimal maxPrice = averageTargetPrice * (1 + priceRangePercent);
+                        
+                        // Zajistit, že minimální cena není nižší než současná cena
+                        minPrice = Math.Max(minPrice, currentBtcPrice * 1.1m); // Minimálně +10% nad současnou cenu
+                        
+                        // Pokud je rozsah příliš malý, zvětšíme ho
+                        if (maxPrice - minPrice < currentBtcPrice * 0.2m)
+                        {
+                            maxPrice = minPrice + currentBtcPrice * 0.5m; // Minimální rozptyl 50% současné ceny
+                        }
+                        
+                        decimal btcPerOrder = availableBtc / smart.OrderCount;
+                        
                         for (int i = 0; i < smart.OrderCount; i++)
                         {
-                            var price = currentBtcPrice + i * (profitCzk / smart.OrderCount); // jednoduchá lineární distribuce
+                            // Odstupňované ceny - lineární distribuce od min po max
+                            decimal priceMultiplier = smart.OrderCount == 1 ? 0.5m : (decimal)i / (smart.OrderCount - 1);
+                            decimal price = minPrice + (maxPrice - minPrice) * priceMultiplier;
+                            
                             smartOrders.Add(new SellOrder
                             {
                                 LoanId = loan.Id,
                                 BtcAmount = btcPerOrder,
-                                PricePerBtc = price,
-                                TotalCzk = btcPerOrder * price,
+                                PricePerBtc = Math.Round(price, 0), // Zaokrouhlení na celé koruny
+                                TotalCzk = btcPerOrder * Math.Round(price, 0),
                                 Status = SellOrderStatus.Planned
                             });
                         }

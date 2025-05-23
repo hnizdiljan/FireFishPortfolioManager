@@ -43,7 +43,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Loans_GetExitStrategy"];
+        get?: never;
         put: operations["Loans_SetExitStrategy"];
         post?: never;
         delete?: never;
@@ -554,27 +554,6 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    Loans_GetExitStrategy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExitStrategyBase"];
                 };
             };
         };

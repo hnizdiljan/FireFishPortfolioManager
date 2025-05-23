@@ -1,4 +1,7 @@
 import React from 'react';
+import { Card, Form, Input, Button, Typography, Space, Alert } from 'antd';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface ApiSettingsProps {
   apiKey: string;
@@ -23,76 +26,80 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   handleSaveApiKeys,
   saving,
 }) => (
-  <div className="bg-white shadow-md rounded-lg p-6">
-    <div className="mb-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-2">Coinmate API Integration</h2>
-      <p className="text-gray-600 mb-2">
-        Enter your Coinmate API credentials to enable automatic sell order execution.
-      </p>
-      <p className="text-sm text-blue-600 font-medium mb-4">
-        {hasApiCredentials ? '✓ API credentials seem to be configured (saved successfully).' : '✗ API credentials might not be set or need saving.'}
-      </p>
-    </div>
-    <form onSubmit={handleSaveApiKeys}>
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Coinmate API Key
-        </label>
-        <input
-          type="text"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="block w-full max-w-lg border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Enter your Coinmate API key"
-          required
+  <Card>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <div>
+        <Title level={4} style={{ marginBottom: 8 }}>Coinmate API Integration</Title>
+        <Paragraph style={{ marginBottom: 8 }}>
+          Enter your Coinmate API credentials to enable automatic sell order execution.
+        </Paragraph>
+        <Alert
+          message={hasApiCredentials ? '✓ API credentials seem to be configured (saved successfully).' : '✗ API credentials might not be set or need saving.'}
+          type={hasApiCredentials ? 'success' : 'warning'}
+          showIcon
+          style={{ marginBottom: 16 }}
         />
       </div>
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Coinmate API Secret
-        </label>
-        <div className="relative max-w-lg">
-          <input
-            type={showSecret ? 'text' : 'password'}
-            value={apiSecret}
-            onChange={(e) => setApiSecret(e.target.value)}
-            className="block w-full border border-gray-300 rounded-md shadow-sm px-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter your Coinmate API secret"
+
+      <Form onFinish={handleSaveApiKeys} layout="vertical">
+        <Form.Item
+          label="Coinmate API Key"
+          required
+        >
+          <Input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter your Coinmate API key"
+            style={{ maxWidth: 400 }}
             required
           />
-          <button
-            type="button"
-            onClick={() => setShowSecret(!showSecret)}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-400"
-          >
-            {showSecret ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        <p className="mt-1 text-sm text-red-500">
-          Your API secret will be securely stored and never displayed again.
-        </p>
-      </div>
-      <div className="p-4 bg-gray-50 rounded-md mb-6">
-        <h3 className="text-sm font-medium text-gray-800 mb-2">API Permissions Required</h3>
-        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-          <li>View account balance</li>
-          <li>Place buy/sell orders</li>
-          <li>View order status</li>
-        </ul>
-      </div>
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={saving}
-          className={`px-4 py-2 rounded-md text-white font-medium ${
-            saving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+        </Form.Item>
+
+        <Form.Item
+          label="Coinmate API Secret"
+          required
         >
-          {saving ? 'Saving...' : 'Save API Keys'}
-        </button>
-      </div>
-    </form>
-  </div>
+          <Input.Password
+            value={apiSecret}
+            onChange={(e) => setApiSecret(e.target.value)}
+            placeholder="Enter your Coinmate API secret"
+            visibilityToggle={{
+              visible: showSecret,
+              onVisibleChange: setShowSecret,
+            }}
+            style={{ maxWidth: 400 }}
+            required
+          />
+          <Text type="danger" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+            Your API secret will be securely stored and never displayed again.
+          </Text>
+        </Form.Item>
+
+        <Alert
+          message="API Permissions Required"
+          description={
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              <li>View account balance</li>
+              <li>Place buy/sell orders</li>
+              <li>View order status</li>
+            </ul>
+          }
+          type="info"
+          style={{ marginBottom: 24 }}
+        />
+
+        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={saving}
+          >
+            {saving ? 'Saving...' : 'Save API Keys'}
+          </Button>
+        </Form.Item>
+      </Form>
+    </Space>
+  </Card>
 );
 
 export default ApiSettings; 

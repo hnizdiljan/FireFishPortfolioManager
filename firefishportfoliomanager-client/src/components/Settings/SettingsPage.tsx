@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { fetchCurrentUser, updateUserSettings, updateCoinmateCredentials, fetchInternalBtcPrice, fetchBtcAth } from '../../services/userService';
-import { UserDto } from '../../types/userTypes';
-import { useAuth } from '../../context/AuthContext';
+import { Tabs, Typography, Spin, Space } from 'antd';
+import { SettingOutlined, ApiOutlined } from '@ant-design/icons';
+import { fetchCurrentUser, updateUserSettings, updateCoinmateCredentials, fetchInternalBtcPrice, fetchBtcAth } from '@services/userService';
+import { UserDto } from '@/types/userTypes';
+import { AuthState, useAuthStore } from '@store/authStore';
 import MessageAlert from './MessageAlert';
 import UserInfo from './UserInfo';
 import PortfolioSettings from './PortfolioSettings';
 import ApiSettings from './ApiSettings';
 
+const { Title, Text } = Typography;
+
 const SettingsPage: React.FC = () => {
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
   const [settings, setSettings] = useState<UserDto | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -154,47 +158,28 @@ const SettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Spin size="large" tip="Loading settings...">
+          <div style={{ minHeight: '200px' }} />
+        </Spin>
       </div>
     );
   }
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
-      <MessageAlert message={message} />
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex">
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`py-2 px-4 border-b-2 font-medium text-sm ${
-                activeTab === 'portfolio'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Portfolio Settings
-            </button>
-            <button
-              onClick={() => setActiveTab('api')}
-              className={`ml-8 py-2 px-4 border-b-2 font-medium text-sm ${
-                activeTab === 'api'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Coinmate API
-            </button>
-          </nav>
-        </div>
-      </div>
-      {activeTab === 'portfolio' && (
-        <>
+  const tabItems = [
+    {
+      key: 'portfolio',
+      label: (
+        <span>
+          <SettingOutlined />
+          Portfolio Settings
+        </span>
+      ),
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {loading && (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+              <Spin size="large" />
             </div>
           )}
           {!loading && settings && (
@@ -227,11 +212,22 @@ const SettingsPage: React.FC = () => {
             </>
           )}
           {!loading && !settings && (
-            <div className="text-center text-gray-500 py-10">User settings could not be loaded or are not available.</div>
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Text type="secondary">User settings could not be loaded or are not available.</Text>
+            </div>
           )}
-        </>
-      )}
-      {activeTab === 'api' && (
+        </Space>
+      )
+    },
+    {
+      key: 'api',
+      label: (
+        <span>
+          <ApiOutlined />
+          Coinmate API
+        </span>
+      ),
+      children: (
         <ApiSettings
           apiKey={apiKey}
           setApiKey={setApiKey}
@@ -243,8 +239,21 @@ const SettingsPage: React.FC = () => {
           handleSaveApiKeys={handleSaveApiKeys}
           saving={saving}
         />
-      )}
-    </div>
+      )
+    }
+  ];
+
+  return (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Title level={2}>Settings</Title>
+      <MessageAlert message={message} />
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as 'portfolio' | 'api')}
+        items={tabItems}
+        size="large"
+      />
+    </Space>
   );
 };
 

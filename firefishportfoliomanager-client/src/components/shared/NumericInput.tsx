@@ -1,12 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { Input, Typography } from 'antd';
+import styled from 'styled-components';
 
-export interface NumericInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+const { Text } = Typography;
+
+const InputContainer = styled.div`
+  width: 100%;
+`;
+
+const ErrorText = styled(Text)`
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 4px;
+  min-height: 20px;
+  display: block;
+`;
+
+const UnitContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const UnitText = styled(Text)`
+  color: #8c8c8c;
+  white-space: nowrap;
+`;
+
+export interface NumericInputProps extends Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> {
   /** The numeric value to display and sync with */
   value: number;
   /** Callback for when the user enters a valid number within bounds */
   onChangeNumber: (value: number) => void;
   /** Optional unit to display next to the input */
   unit?: React.ReactNode;
+  /** Minimum value */
+  min?: number;
+  /** Maximum value */
+  max?: number;
+  /** Step value */
+  step?: number | string;
 }
 
 const NumericInput: React.FC<NumericInputProps> = ({
@@ -14,11 +47,6 @@ const NumericInput: React.FC<NumericInputProps> = ({
   onChangeNumber,
   min,
   max,
-  step,
-  id,
-  name,
-  required,
-  className,
   unit,
   ...rest
 }) => {
@@ -40,6 +68,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
     if (val.includes(',')) {
       setError('Použijte tečku jako oddělovač desetinných míst.');
       setInputValue(val.replace(/,/g, ''));
+
       return;
     }
     setError('');
@@ -47,13 +76,14 @@ const NumericInput: React.FC<NumericInputProps> = ({
     // Validace patternu
     if (!/^\d*\.?\d*$/.test(val) && val !== '') {
       setError('Zadejte pouze čísla a tečku.');
+
       return;
     }
     const parsed = parseFloat(val);
     // Only invoke callback for valid numeric entries within bounds
     if (!isNaN(parsed)) {
-      if (min !== undefined && parsed < Number(min)) return;
-      if (max !== undefined && parsed > Number(max)) return;
+      if (min !== undefined && parsed < min) return;
+      if (max !== undefined && parsed > max) return;
       onChangeNumber(parsed);
     }
   };
@@ -67,8 +97,8 @@ const NumericInput: React.FC<NumericInputProps> = ({
     } else {
       let newVal = parsed;
       // Clamp to bounds on blur
-      if (min !== undefined && newVal < Number(min)) newVal = Number(min);
-      if (max !== undefined && newVal > Number(max)) newVal = Number(max);
+      if (min !== undefined && newVal < min) newVal = min;
+      if (max !== undefined && newVal > max) newVal = max;
       if (newVal !== parsed) {
         onChangeNumber(newVal);
         setInputValue(newVal.toString());
@@ -77,41 +107,30 @@ const NumericInput: React.FC<NumericInputProps> = ({
     }
   };
 
+  const inputComponent = (
+    <Input
+      value={inputValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      placeholder="Např. 1234.56 (použijte tečku)"
+      status={error ? 'error' : undefined}
+      autoComplete="off"
+      {...rest}
+    />
+  );
+
   return (
-    <div className="w-full">
-      <div className="flex items-center relative">
-        <input
-          type="text"
-          id={id}
-          name={name}
-          value={inputValue}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          min={min}
-          max={max}
-          step={step}
-          required={required}
-          className={className ? `${className} py-2 pl-4` : 'block w-full border border-gray-300 rounded-lg shadow-sm py-2 pl-4 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition duration-150'}
-          pattern="^\\d*\\.?\\d*$"
-          inputMode="decimal"
-          placeholder="Např. 1234.56 (použijte tečku)"
-          aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined}
-          autoComplete="off"
-          {...rest}
-        />
-        {unit && (
-          <span className="ml-2 text-gray-500 whitespace-nowrap">{unit}</span>
-        )}
-      </div>
-      <div className="min-h-[20px]">
-        {error && (
-          <div id={`${id}-error`} className="text-red-600 text-xs mt-1" aria-live="polite">
-            {error}
-          </div>
-        )}
-      </div>
-    </div>
+    <InputContainer>
+      {unit ? (
+        <UnitContainer>
+          {inputComponent}
+          <UnitText>{unit}</UnitText>
+        </UnitContainer>
+      ) : (
+        inputComponent
+      )}
+      <ErrorText>{error}</ErrorText>
+    </InputContainer>
   );
 };
 

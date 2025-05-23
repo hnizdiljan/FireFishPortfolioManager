@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart, ColorType, Time, IChartApi, LineSeries } from 'lightweight-charts';
-import { ChartData } from '../../services/statisticsService';
+import { ChartData } from '../../types';
 
 interface PortfolioChartProps {
   data: ChartData;
@@ -11,7 +11,19 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
 
   useEffect(() => {
+    const czechMonths = [
+      "leden", "únor", "březen", "duben", "květen", "červen",
+      "červenec", "srpen", "září", "říjen", "listopad", "prosinec"
+    ];
+
     const formatDate = (dateInput: unknown): string | null => {
+      if (typeof dateInput === "string" && czechMonths.includes(dateInput.toLowerCase())) {
+        // Use current year, or adjust as needed
+        const year = new Date().getFullYear();
+        const month = czechMonths.indexOf(dateInput.toLowerCase()) + 1;
+
+        return `${year}-${month.toString().padStart(2, "0")}-01`;
+      }
       try {
         const date = new Date(dateInput as string | number | Date);
         if (isNaN(date.getTime())) {
@@ -20,6 +32,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
+
         return `${year}-${month}-${day}`;
       } catch (e) {
         return null; // Error during parsing
@@ -32,8 +45,10 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
           const formattedTime = formatDate(label);
           if (!formattedTime) {
             console.warn(`[PortfolioChart] Skipping invalid date label at index ${i}:`, label);
+
             return null; // Indicate invalid point
           }
+
           return {
             time: formattedTime as Time, 
             btc: data.btcValues[i],
@@ -46,6 +61,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data }) => {
       const sortedData = filteredData.sort((a, b) => {
           const timeA = (a!).time as string;
           const timeB = (b!).time as string;
+
           return timeA.localeCompare(timeB);
         });
   

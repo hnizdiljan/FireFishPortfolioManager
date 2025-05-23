@@ -5,47 +5,40 @@ alwaysApply: false
 ---
 # Cursor Project Rules
 
-Jsi seniorní frontend developer se specializací na ReactJS. Tato pravidla slouží jako vodítko pro konzistentní vývoj frontendových projektů s podobným technologickým stackem.
+These rules were derived from the `frontend-starter-kit` project and serve as a guide for consistent development of frontend projects with similar technology stack using Cursor.
 
-## 1. Jazyk a Framework
+## 1. Language and Framework
+*   **Primary language:** TypeScript (`.ts`, `.tsx`).
+*   **UI Library:** React (`react`, `react-dom`).
+*   **Components:** Use functional components with React Hooks.
 
-*   **Primární jazyk:** TypeScript (`.ts`, `.tsx`).
-*   **UI Knihovna:** React (`react`, `react-dom`).
-*   **Komponenty:** Používat funkcionální komponenty s React Hooks.
-
-## 2. Struktura Projektu
-
-*   **Zdrojový kód:** `src/`
-*   **Komponenty:** `src/components/`
-*   **Utility/Helpers:** `src/utils/`, `src/helpers/`
-*   **Konstanty:** `src/constants/`
-*   **Assety:** `src/assets/` (včetně `src/assets/svg/` pro SVG ikony a `src/assets/svg/dist/` pro generované komponenty)
-*   **Veřejné soubory:** `public/`
-*   **Routing:** `src/routes/` (předpoklad, může se lišit)
-*   **Stavy (Zustand):** `src/store/` nebo `src/stores/` (předpoklad)
-*   **Typy:** `src/types/` nebo definované u komponent/modulů.
-*   **Konfigurace i18n:** Pravděpodobně v `src/i18n/` nebo `src/locales/`.
+## 2. Project Structure
+*   **Source code:** `src/`
+*   **Components:** `src/components/`
+*   **Utilities/Helpers:** `src/utils/`, `src/helpers/`
+*   **Constants:** `src/constants/`
+*   **Assets:** `src/assets/` (including `src/assets/svg/` for SVG icons and `src/assets/svg/dist/` for generated components)
+*   **Public files:** `public/`
+*   **Routing:** `src/routes/` (assumption, may vary)
+*   **States (Zustand):** `src/store/` or `src/stores/` (assumption)
+*   **Types:** `src/types/` or defined with components/modules.
+*   **i18n configuration:** Likely in `src/i18n/` or `src/locales/`.
 
 ## 3. Styling
-
-*   **Metoda:** `styled-components` pro CSS-in-JS.
-*   **UI Kit:** `antd` pro hotové komponenty a layout.
-*   **Konvence:** Definovat styled komponenty blízko React komponent, které je používají.
+*   **Method:** `styled-components` for CSS-in-JS.
+*   **UI Kit:** `antd` for ready-made components and layout.
+*   **Convention:** Define styled components close to the React components that use them.
 
 ## 4. State Management
-
-*   **Nástroj:** `Zustand`.
-*   **Struktura:** Vytvářet oddělené "stores" pro různé části stavu aplikace.
+*   **Tool:** `Zustand`.
+*   **Structure:** Create separate "stores" for different parts of the application state.
 
 ## 5. Routing
+*   **Tool:** `react-router`.
+*   **Configuration:** Define routes centrally (e.g., in `src/routes/index.tsx`).
 
-*   **Nástroj:** `react-router`.
-*   **Konfigurace:** Definovat routy centrálně (např. v `src/routes/index.tsx`).
-
-## 6. Formátování (Prettier)
-
-Dodržovat konfiguraci z `.prettierrc`:
-
+## 6. Formatting (Prettier)
+Follow the configuration from `.prettierrc`:
 *   `printWidth`: 100
 *   `tabWidth`: 2
 *   `useTabs`: false
@@ -55,7 +48,7 @@ Dodržovat konfiguraci z `.prettierrc`:
 *   `bracketSpacing`: true
 *   `arrowParens`: "always"
 *   `endOfLine`: "lf"
-*   **Řazení importů:** Automaticky pomocí `@trivago/prettier-plugin-sort-imports` podle pořadí definovaného v `.prettierrc`:
+*   **Import sorting:** Automatically using `@trivago/prettier-plugin-sort-imports` according to the order defined in `.prettierrc`:
     ```
     "importOrder": [
       "^@components/(.*)$",
@@ -71,42 +64,36 @@ Dodržovat konfiguraci z `.prettierrc`:
     ```
 
 ## 7. Linting (ESLint)
-
-Dodržovat konfiguraci z `eslint.config.js`:
-
-*   **Základ:** Doporučená pravidla `eslint` a `typescript-eslint`.
+Follow the configuration from `eslint.config.js`:
+*   **Base:** Recommended rules from `eslint` and `typescript-eslint`.
 *   **React:**
-    *   `react/react-in-jsx-scope`: `off` (není nutný `import React`).
-    *   Pravidla pro hooks (`eslint-plugin-react-hooks`).
-    *   Pravidla pro refresh (`eslint-plugin-react-refresh`).
-    *   Varování pro `jsx-key`, `jsx-no-comment-textnodes`, `jsx-no-useless-fragment`.
+    *   `react/react-in-jsx-scope`: `off` (`import React` not required).
+    *   Rules for hooks (`eslint-plugin-react-hooks`).
+    *   Rules for refresh (`eslint-plugin-react-refresh`).
+    *   Warnings for `jsx-key`, `jsx-no-comment-textnodes`, `jsx-no-useless-fragment`.
     *   `jsx-props-no-spreading`: `off`.
-    *   `react/jsx-curly-brace-presence`: `warn` (preferovat `prop={val}` a `{var}`).
-*   **Obecné:**
-    *   `padding-line-between-statements`: Prázdný řádek před `return`.
-    *   `no-console`: `warn` (povoleny `console.warn`, `console.error`).
-*   **Ignorované:** Adresář `dist/`.
+    *   `react/jsx-curly-brace-presence`: `warn` (prefer `prop={val}` and `{var}`).
+*   **General:**
+    *   `padding-line-between-statements`: Empty line before `return`.
+    *   `no-console`: `warn` (`console.warn`, `console.error` allowed).
+*   **Ignored:** `dist/` directory.
 
-## 8. Build a Development
-
-*   **Nástroj:** `Vite`.
-*   **Spouštění:**
-    *   Vývoj: `npm run dev`
-    *   Produkční build: `npm run build`
-    *   Náhled buildu: `npm run preview`
-*   **SVG:** Generovat React komponenty z SVG pomocí `npm run generate-svg` (spouští `@svgr/cli`).
+## 8. Build and Development
+*   **Tool:** `Vite`.
+*   **Running:**
+    *   Development: `npm run dev`
+    *   Production build: `npm run build`
+    *   Build preview: `npm run preview`
+*   **SVG:** Generate React components from SVG using `npm run generate-svg` (runs `@svgr/cli`).
 
 ## 9. Internationalization (i18n)
-
-*   **Nástroje:** `i18next`, `react-i18next`.
-*   **Implementace:** Používat `useTranslation` hook a ukládat překlady do JSON souborů (pravděpodobně v `src/locales/`).
+*   **Tools:** `i18next`, `react-i18next`.
+*   **Implementation:** Use `useTranslation` hook and store translations in JSON files (likely in `src/locales/`).
 
 ## 10. Git Hooks
+*   **Tool:** `Husky`.
+*   **Purpose:** Enforce code quality (linting, formatting) before commit/push (configuration in `.husky/`).
 
-*   **Nástroj:** `Husky`.
-*   **Účel:** Vynucovat kvalitu kódu (linting, formátování) před commitem/pushem (konfigurace v `.husky/`).
-
-## 11. Závislosti
-
-*   Udržovat závislosti aktuální.
-*   Používat `npm install` pro instalaci. 
+## 11. Dependencies
+*   Keep dependencies up to date.
+*   Use `npm install` for installation.

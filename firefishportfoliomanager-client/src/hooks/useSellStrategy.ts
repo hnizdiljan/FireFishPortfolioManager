@@ -5,20 +5,21 @@ import {
     fetchLoanById, 
     executeSellStrategy as apiExecuteStrategy 
 } from '../services/loanService';
-import { useAuth } from '../context/AuthContext';
+import { useAuthStore, AuthState } from '@store/authStore';
 
 export const useSellStrategy = (loanId?: number) => {
   const [loan, setLoan] = useState<Loan | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { getAccessToken } = useAuth();
+  const getAccessToken = useAuthStore((state: AuthState) => state.getAccessToken);
   const navigate = useNavigate();
 
   const loadData = useCallback(async () => {
     if (!loanId) {
       setError('Loan ID is missing.');
       setIsLoading(false);
+
       return;
     }
     setIsLoading(true);
@@ -38,6 +39,7 @@ export const useSellStrategy = (loanId?: number) => {
   const executeStrategy = useCallback(async () => {
     if (!loanId) {
       console.warn('Execution prevented: Invalid ID.');
+
       return false;
     }
     setIsExecuting(true);
@@ -46,11 +48,13 @@ export const useSellStrategy = (loanId?: number) => {
       const executedOrders = await apiExecuteStrategy(getAccessToken, loanId);
       alert(`Successfully submitted ${executedOrders.length} sell orders!`);
       navigate('/loans');
+
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to execute strategy';
       setError(message);
       console.error(`Error executing strategy for loan ${loanId}:`, err);
+
       return false;
     } finally {
       setIsExecuting(false);

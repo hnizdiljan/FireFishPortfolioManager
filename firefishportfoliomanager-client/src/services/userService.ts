@@ -1,8 +1,4 @@
-import { callApi } from "./apiService";
-import { UserDto, UserSettingsUpdateModel, BtcPriceModel } from "../types/userTypes";
-
-// Typ pro funkci, která umí získat token
-type GetAccessTokenFunction = () => Promise<string | null>;
+import { callApi } from "./apiService";import { UserDto, UserSettingsUpdateModel, BtcPriceModel, GetAccessTokenFunction } from "../types";
 
 /**
  * Fetch current user data

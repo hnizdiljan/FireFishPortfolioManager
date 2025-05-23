@@ -1,6 +1,21 @@
 import React from 'react';
+import { Layout as AntLayout } from 'antd';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import styled from 'styled-components';
+
+const { Content } = AntLayout;
+
+const StyledLayout = styled(AntLayout)`
+  min-height: 100vh;
+  background-color: #f5f5f5;
+`;
+
+const StyledContent = styled(Content)`
+  padding: 24px;
+  margin: 0;
+  background-color: #f5f5f5;
+`;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,15 +23,15 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <StyledLayout>
       <Navbar />
-      <div className="flex">
+      <AntLayout>
         <Sidebar />
-        <main className="flex-1 p-6">
+        <StyledContent>
           {children}
-        </main>
-      </div>
-    </div>
+        </StyledContent>
+      </AntLayout>
+    </StyledLayout>
   );
 };
 
