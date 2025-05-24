@@ -23,6 +23,7 @@ export type SellOrderBasicDto = components["schemas"]["SellOrderBasicDto"];
 export type LoanStatus = components["schemas"]["LoanStatus"];
 export type SellOrderStatus = components["schemas"]["SellOrderStatus"];
 export type ExitStrategyType = components["schemas"]["ExitStrategyType"];
+export type DistributionType = components["schemas"]["DistributionType"];
 
 // Exit Strategy typy
 export type ExitStrategyBase = components["schemas"]["ExitStrategyBase"];
@@ -30,6 +31,8 @@ export type HodlExitStrategy = components["schemas"]["HodlExitStrategy"];
 export type CustomLadderExitStrategy = components["schemas"]["CustomLadderExitStrategy"];
 export type CustomLadderOrder = components["schemas"]["CustomLadderOrder"];
 export type SmartDistributionExitStrategy = components["schemas"]["SmartDistributionExitStrategy"];
+export type EquidistantLadderExitStrategy = components["schemas"]["EquidistantLadderExitStrategy"];
+export type EquifrequentLadderExitStrategy = components["schemas"]["EquifrequentLadderExitStrategy"];
 
 // API modely
 export type UserSettingsUpdateModel = components["schemas"]["UserSettingsUpdateModel"];
@@ -39,7 +42,7 @@ export type BtcAthModel = components["schemas"]["BtcAthModel"];
 export type LoanReferenceDto = components["schemas"]["LoanReferenceDto"];
 
 // Union typy pro exit strategie
-export type ExitStrategy = HodlExitStrategy | CustomLadderExitStrategy | SmartDistributionExitStrategy;
+export type ExitStrategy = HodlExitStrategy | CustomLadderExitStrategy | SmartDistributionExitStrategy | EquidistantLadderExitStrategy | EquifrequentLadderExitStrategy;
 
 // Utility typy
 export type GetAccessTokenFunction = () => Promise<string | null>;

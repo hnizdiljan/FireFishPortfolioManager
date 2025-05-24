@@ -4,7 +4,6 @@ import {
   DashboardOutlined,
   DollarOutlined,
   SettingOutlined,
-  BarChartOutlined,
   UnorderedListOutlined
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -40,11 +39,6 @@ const Sidebar: React.FC = () => {
       key: '/settings',
       icon: <SettingOutlined />,
       label: 'Settings',
-    },
-    {
-      key: '/statistics',
-      icon: <BarChartOutlined />,
-      label: 'Statistics',
     },
     {
       key: '/sellorders',

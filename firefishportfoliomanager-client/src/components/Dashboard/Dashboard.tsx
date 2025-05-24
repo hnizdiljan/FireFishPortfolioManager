@@ -1,13 +1,14 @@
 import React from 'react';
 import { PortfolioSummaryRow } from './PortfolioSummaryComponents';
 import { UpcomingRepayment, RecentLoans } from './DashboardComponents';
+import LoanMetricsChart from './LoanMetricsChart';
 import ErrorBoundary from '@components/shared/ErrorBoundary';
 import { AuthState, useAuthStore } from '@store/authStore';
 import { useDashboardData } from '@hooks/useDashboardData';
 import { statusDisplay } from '@utils/loanUtils';
 import { usePortfolioSummary } from '@hooks/usePortfolioSummary';
 import type { Loan } from '@/types/loanTypes';
-import { Row, Col, Card, Typography, Divider } from 'antd';
+import { Row, Col, Card, Typography, Divider, Space } from 'antd';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
@@ -18,11 +19,31 @@ const DashboardContainer = styled.div`
   padding: 32px 16px;
 `;
 
-const StatCard = styled(Card)`
+const QuickMetricsCard = styled(Card)`
   min-height: 120px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const SectionTitle = styled(Title)`
+  margin-bottom: 16px !important;
+  color: #1f1f1f;
+  
+  &::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(135deg, #1890ff, #36cfc9);
+    margin-top: 8px;
+  }
 `;
 
 // Make sure this file is treated as a module
@@ -39,18 +60,7 @@ const Dashboard: React.FC = () => {
 
   // Filter to only show active loans
   const activeLoans = loans.filter(l => l.status !== 'Closed');
-  const totalLoanAmount = activeLoans.reduce((sum, loan) => sum + loan.loanAmountCzk, 0);
-  const totalRepaymentAmount = activeLoans.reduce((sum, loan) => sum + loan.repaymentAmountCzk, 0);
-  const totalCollateralBtc = activeLoans.reduce((sum, loan) => sum + loan.collateralBtc, 0);
-  const totalPurchasedBtc = activeLoans.reduce((sum, loan) => sum + (loan.purchasedBtc ?? 0), 0);
-  const collateralValue = btcPrice ? totalCollateralBtc * btcPrice : 0;
-  const purchasedValue = btcPrice ? totalPurchasedBtc * btcPrice : 0;
-  const nextRepayment = activeLoans.length > 0 
-    ? activeLoans.reduce((earliest, current) => 
-        new Date(current.repaymentDate) < new Date(earliest.repaymentDate) ? current : earliest
-      )
-    : null;
-
+  
   // Calculate recentLoansSummary here as it's specific to this component's view
   const recentLoansSummary = [...loans].sort((a, b) => 
       new Date(b.loanDate).getTime() - new Date(a.loanDate).getTime()
@@ -68,82 +78,67 @@ const Dashboard: React.FC = () => {
   return (
     <ErrorBoundary>
       <DashboardContainer>
-        <Title level={2} style={{ marginBottom: 24 }}>Dashboard</Title>
-        <Text type="secondary" style={{ fontSize: 18, marginBottom: 32, display: 'block' }}>
-          Welcome back, {userName || user?.name || 'User'}!
-        </Text>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Header Section */}
+          <div>
+            <Title level={2} style={{ marginBottom: 8 }}>Dashboard</Title>
+            <Text type="secondary" style={{ fontSize: 16 }}>
+              Welcome back, {userName || user?.name || 'User'}!
+            </Text>
+          </div>
 
-        {error && (
-          <Card style={{ background: '#fff1f0', borderColor: '#ffa39e', marginBottom: 24 }}>
-            <Text type="danger"><b>Error!</b> {error}</Text>
-          </Card>
-        )}
+          {error && (
+            <Card style={{ background: '#fff1f0', borderColor: '#ffa39e' }}>
+              <Text type="danger"><b>Error!</b> {error}</Text>
+            </Card>
+          )}
 
-        {portfolioSummary && (
-          <>
-            <PortfolioSummaryRow summary={portfolioSummary} />
-            
-            {portfolioSummary.nearestRepayment && (
-              <UpcomingRepayment nearestRepayment={portfolioSummary.nearestRepayment} />
-            )}
-            
-            <Divider />
-            <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
-              <Col xs={24} md={12}>
+          {/* Portfolio Summary & Key Metrics */}
+          {portfolioSummary && (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <SectionTitle level={3}>Portfolio Overview</SectionTitle>
+              
+              <PortfolioSummaryRow summary={portfolioSummary} />
+              
+              {portfolioSummary.nearestRepayment && (
+                <UpcomingRepayment nearestRepayment={portfolioSummary.nearestRepayment} />
+              )}
+            </Space>
+          )}
+
+          {/* Performance Chart */}
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <SectionTitle level={3}>Performance Analytics</SectionTitle>
+            <LoanMetricsChart 
+              loans={loans} 
+              btcPrice={btcPrice} 
+              isLoading={isLoading} 
+            />
+          </Space>
+
+          {/* Activity & Quick Actions */}
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <SectionTitle level={3}>Recent Activity</SectionTitle>
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
                 <RecentLoans loans={recentLoansSummary} />
               </Col>
+              <Col xs={24} lg={12}>
+                <QuickMetricsCard>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 14 }}>Current BTC Price</Text>
+                    <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+                      {btcPrice ? btcPrice.toLocaleString() : 'N/A'} CZK
+                    </Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Real-time market price
+                    </Text>
+                  </Space>
+                </QuickMetricsCard>
+              </Col>
             </Row>
-          </>
-        )}
-
-        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Total Active Loaned</Text>
-              <Title level={3}>{totalLoanAmount.toLocaleString()} CZK</Title>
-              <Text type="secondary">({activeLoans.length} active loans)</Text>
-            </StatCard>
-          </Col>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Total Repayment Due (Active)</Text>
-              <Title level={3}>{totalRepaymentAmount.toLocaleString()} CZK</Title>
-            </StatCard>
-          </Col>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Next Repayment Due</Text>
-              {nextRepayment ? (
-                <>
-                  <Title level={3}>{new Date(nextRepayment.repaymentDate).toLocaleDateString()}</Title>
-                  <Text type="secondary">({nextRepayment.loanId} - {nextRepayment.repaymentAmountCzk.toLocaleString()} CZK)</Text>
-                </>
-              ) : (
-                <Text type="secondary">N/A</Text>
-              )}
-            </StatCard>
-          </Col>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Total Collateral (Active)</Text>
-              <Title level={3}>{totalCollateralBtc.toFixed(4)} BTC</Title>
-              <Text type="secondary">≈ {collateralValue.toLocaleString()} CZK</Text>
-            </StatCard>
-          </Col>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Total Purchased (Active Loans)</Text>
-              <Title level={3}>{totalPurchasedBtc.toFixed(4)} BTC</Title>
-              <Text type="secondary">≈ {purchasedValue.toLocaleString()} CZK</Text>
-            </StatCard>
-          </Col>
-          <Col xs={24} md={8}>
-            <StatCard>
-              <Text type="secondary">Current BTC Price</Text>
-              <Title level={3}>{btcPrice ? btcPrice.toLocaleString() : 'N/A'} CZK</Title>
-            </StatCard>
-          </Col>
-        </Row>
+          </Space>
+        </Space>
       </DashboardContainer>
     </ErrorBoundary>
   );

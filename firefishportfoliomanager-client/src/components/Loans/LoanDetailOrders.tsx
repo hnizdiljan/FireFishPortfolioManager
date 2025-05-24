@@ -15,7 +15,7 @@ const statusLabels = [
   'Failed',
 ];
 
-type LoanWithOrders = components["schemas"]["Loan"];
+type LoanWithOrders = components["schemas"]["LoanDto"];
 type SellOrder = components["schemas"]["SellOrder"];
 
 interface DataType extends SellOrder {

@@ -48,45 +48,84 @@ interface RecentLoansProps {
 export const RecentLoans: React.FC<RecentLoansProps> = ({ loans = [] }) => {
   const columns = [
     {
-      title: 'ID',
+      title: 'Loan ID',
       dataIndex: 'id',
       key: 'id',
+      width: '20%',
+      render: (id: string) => (
+        <Text strong style={{ color: '#1890ff' }}>
+          {id}
+        </Text>
+      ),
     },
     {
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
+      width: '25%',
+      render: (date: string) => (
+        <Text type="secondary">
+          {new Date(date).toLocaleDateString('cs-CZ')}
+        </Text>
+      ),
     },
     {
       title: 'Amount',
       dataIndex: 'amount',
       key: 'amount',
-      render: (amount: number) => `${amount.toLocaleString()} CZK`,
+      width: '30%',
+      render: (amount: number) => (
+        <Text strong>{amount.toLocaleString()} CZK</Text>
+      ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      width: '25%',
       render: (status: string) => (
-        <Tag color="green">{status}</Tag>
+        <Tag color="green" style={{ borderRadius: '12px' }}>
+          {status}
+        </Tag>
       ),
     },
   ];
 
   return (
     <Card 
-      title={<Title level={4} style={{ margin: 0 }}>Recent Loans</Title>}
+      title={
+        <Space>
+          <Title level={4} style={{ margin: 0 }}>Recent Loans</Title>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Last 3 loans
+          </Text>
+        </Space>
+      }
       hoverable
-            extra={        <Link to="/loans">          <Text>            View All Loans <ArrowRightOutlined />          </Text>        </Link>      }
+      style={{ height: '100%' }}
+      extra={
+        <Link to="/loans">
+          <Text style={{ fontSize: 14 }}>
+            View All <ArrowRightOutlined />
+          </Text>
+        </Link>
+      }
     >
-      <Table
-        columns={columns}
-        dataSource={loans}
-        rowKey="id"
-        pagination={false}
-        size="small"
-        scroll={{ x: true }}
-      />
+      {loans.length > 0 ? (
+        <Table
+          columns={columns}
+          dataSource={loans}
+          rowKey="id"
+          pagination={false}
+          size="small"
+          scroll={{ x: true }}
+          showHeader={false}
+        />
+      ) : (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Text type="secondary">No recent loans</Text>
+        </div>
+      )}
     </Card>
   );
 };

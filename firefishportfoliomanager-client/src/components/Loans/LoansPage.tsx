@@ -232,6 +232,8 @@ const LoansPage: React.FC = () => {
       key: 'potentialValue',
       width: 140,
       render: (record: LoanWithDetails) => {
+        // Používáme backend hodnotu s nejvyšší cenou z SELL orderů pro zbývající BTC
+        // V detail view (SellStrategyPage) může uživatel simulovat jinou cenu
         const backendPotentialValueCzk = record.potentialValueCzk || 0;
         const potentialProfit = record.repaymentAmountCzk && record.repaymentAmountCzk > 0
           ? ((backendPotentialValueCzk / record.repaymentAmountCzk) - 1) * 100

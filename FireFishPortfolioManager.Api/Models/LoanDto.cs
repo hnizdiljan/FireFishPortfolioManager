@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FireFishPortfolioManager.Data; // For LoanStatus enum
 using System.ComponentModel.DataAnnotations;
 
@@ -43,5 +44,10 @@ namespace FireFishPortfolioManager.Api.Models
         [Required]
         public string UpdatedAt { get; set; }
         public string StrategyJson { get; set; }
+        
+        /// <summary>
+        /// Sell ordery asociované s touto půjčkou
+        /// </summary>
+        public List<SellOrderBasicDto> SellOrders { get; set; } = new List<SellOrderBasicDto>();
     }
 } 

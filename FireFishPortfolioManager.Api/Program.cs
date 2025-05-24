@@ -26,12 +26,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Add PortfolioDbContext for historical price data
+builder.Services.AddDbContext<PortfolioDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 // Services
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<LoanService>();
 builder.Services.AddScoped<PortfolioCalculationService>();
 builder.Services.AddScoped<BitcoinMarketDataService>();
 builder.Services.AddScoped<ExitStrategyService>();
+builder.Services.AddSingleton<ISellOrderGeneratorFactory, SellOrderGeneratorFactory>();
+
+// Refaktorované služby podle SOLID principů
+builder.Services.AddScoped<ILoanCalculationService, LoanCalculationService>();
+builder.Services.AddScoped<ILoanMappingService, LoanMappingService>();
+
 builder.Services.AddHttpClient<CoinmateService>();
 
 // Controllers, Swagger, CORS
@@ -41,6 +51,7 @@ builder.Services.AddControllers()
         options.SerializerSettings.TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto;
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
@@ -81,6 +92,10 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         context.Database.Migrate();
+        
+        // Also migrate PortfolioDbContext
+        var portfolioContext = services.GetRequiredService<PortfolioDbContext>();
+        portfolioContext.Database.Migrate();
     }
     catch (Exception ex)
     {

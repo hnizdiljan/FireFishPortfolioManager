@@ -1,18 +1,15 @@
 using FireFishPortfolioManager.Api.Models;
-using LoanDto = FireFishPortfolioManager.Api.Models.LoanDto;
 using FireFishPortfolioManager.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using FireFishPortfolioManager.Data;
-using System;
-using Microsoft.Extensions.Logging;
 
 namespace FireFishPortfolioManager.Api.Controllers
 {
+    /// <summary>
+    /// Controller pro základní CRUD operace s půjčkami.
+    /// Refaktorováno podle SOLID principů - zaměřuje se pouze na základní správu půjček.
+    /// </summary>
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
@@ -20,44 +17,69 @@ namespace FireFishPortfolioManager.Api.Controllers
     {
         private readonly LoanService _loanService;
         private readonly UserService _userService;
-        private readonly ExitStrategyService _exitStrategyService;
+        private readonly ILoanMappingService _mappingService;
         private readonly ILogger<LoansController> _logger;
 
-        public LoansController(LoanService loanService, UserService userService, ExitStrategyService exitStrategyService, ILogger<LoansController> logger)
+        public LoansController(
+            LoanService loanService,
+            UserService userService,
+            ILoanMappingService mappingService,
+            ILogger<LoansController> logger)
         {
-            _loanService = loanService;
-            _userService = userService;
-            _exitStrategyService = exitStrategyService;
-            _logger = logger;
+            _loanService = loanService ?? throw new ArgumentNullException(nameof(loanService));
+            _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+            _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        // GET: api/loans
+        /// <summary>
+        /// Získá všechny půjčky pro aktuálního uživatele
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LoanDto>>> GetLoans()
         {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            var loans = await _loanService.GetUserLoansAsync(user.Id);
-            var loanDtos = loans.Select(MapToDto).ToList();
-            return Ok(loanDtos);
+            try
+            {
+                var user = await _userService.GetOrCreateUserAsync(User);
+                var loans = await _loanService.GetUserLoansAsync(user.Id);
+                var loanDtos = _mappingService.MapToDto(loans);
+                return Ok(loanDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving loans for user");
+                return StatusCode(500, "An error occurred while retrieving loans.");
+            }
         }
 
-        // GET: api/loans/{id}
+        /// <summary>
+        /// Získá konkrétní půjčku podle ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<LoanDto>> GetLoan(int id)
         {
             var user = await _userService.GetOrCreateUserAsync(User);
+            
             try
             {
                 var loan = await _loanService.GetLoanAsync(user.Id, id);
-                return Ok(MapToDto(loan));
+                var loanDto = _mappingService.MapToDto(loan);
+                return Ok(loanDto);
             }
             catch (KeyNotFoundException)
             {
-                return NotFound(string.Empty);
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving loan {LoanId} for user", id);
+                return StatusCode(500, "An error occurred while retrieving the loan.");
             }
         }
 
-        // POST: api/loans
+        /// <summary>
+        /// Vytvoří novou půjčku
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<LoanDto>> CreateLoan([FromBody] Loan loan)
         {
@@ -67,36 +89,58 @@ namespace FireFishPortfolioManager.Api.Controllers
             }
 
             var user = await _userService.GetOrCreateUserAsync(User);
-            var createdLoan = await _loanService.AddLoanAsync(user.Id, loan);
-            return CreatedAtAction(nameof(GetLoan), new { id = createdLoan.Id }, MapToDto(createdLoan));
+            
+            try
+            {
+                var createdLoan = await _loanService.AddLoanAsync(user.Id, loan);
+                var loanDto = _mappingService.MapToDto(createdLoan);
+                return CreatedAtAction(nameof(GetLoan), new { id = createdLoan.Id }, loanDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating loan for user");
+                return StatusCode(500, "An error occurred while creating the loan.");
+            }
         }
 
-        // PUT: api/loans/{id}
+        /// <summary>
+        /// Aktualizuje existující půjčku
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<LoanDto>> UpdateLoan(int id, [FromBody] Loan loan)
         {
             if (id != loan.Id || !ModelState.IsValid)
             {
-                return BadRequest();
+                return BadRequest("Loan ID mismatch or invalid model state.");
             }
 
             var user = await _userService.GetOrCreateUserAsync(User);
+            
             try
             {
                 var updatedLoan = await _loanService.UpdateLoanAsync(user.Id, id, loan);
-                return Ok(MapToDto(updatedLoan));
+                var loanDto = _mappingService.MapToDto(updatedLoan);
+                return Ok(loanDto);
             }
             catch (KeyNotFoundException)
             {
-                return NotFound(string.Empty);
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating loan {LoanId} for user", id);
+                return StatusCode(500, "An error occurred while updating the loan.");
             }
         }
 
-        // DELETE: api/loans/{id}
+        /// <summary>
+        /// Smaže půjčku
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLoan(int id)
         {
             var user = await _userService.GetOrCreateUserAsync(User);
+            
             try
             {
                 await _loanService.DeleteLoanAsync(user.Id, id);
@@ -104,346 +148,13 @@ namespace FireFishPortfolioManager.Api.Controllers
             }
             catch (KeyNotFoundException)
             {
-                return NotFound(string.Empty);
-            }
-        }
-
-        // GET: api/loans/{id}/exitstrategy
-        [HttpGet("{id}/exitstrategy")]
-        public async Task<ActionResult<ExitStrategyBase>> GetExitStrategy(int id)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            try
-            {
-                var loan = await _loanService.GetLoanAsync(user.Id, id);
-                _logger.LogDebug("GetExitStrategy for loan {LoanId}: StrategyJson = '{StrategyJson}'", id, loan.StrategyJson ?? "(null)");
-
-                if (string.IsNullOrEmpty(loan.StrategyJson))
-                {
-                    _logger.LogDebug("GetExitStrategy for loan {LoanId}: No strategy found, returning NoContent", id);
-                    return NoContent();
-                }
-
-                var strategy = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
-                _logger.LogDebug("GetExitStrategy for loan {LoanId}: Successfully deserialized strategy of type {StrategyType}", id, strategy?.GetType().Name ?? "(null)");
-                return Ok(strategy);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "GetExitStrategy for loan {LoanId}: JSON deserialization failed", id);
-                return BadRequest("Invalid strategy JSON format");
-            }
-            catch (KeyNotFoundException)
-            {
-                _logger.LogWarning("GetExitStrategy for loan {LoanId}: Loan not found", id);
-                return NotFound(string.Empty);
-            }
-        }
-
-        // PUT: api/loans/{id}/exitstrategy
-        [HttpPut("{id}/exitstrategy")]
-        public async Task<IActionResult> SetExitStrategy(int id, [FromBody] ExitStrategyBase strategy)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            try
-            {
-                var loan = await _loanService.GetLoanAsync(user.Id, id);
-                var strategyJson = JsonConvert.SerializeObject(strategy, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
-                // Validace Custom Ladder strategie
-                if (strategy is CustomLadderExitStrategy custom)
-                {
-                    var sum = custom.Orders?.Sum(o => o.PercentToSell) ?? 0m;
-                    if (sum > 100m)
-                    {
-                        return BadRequest($"Celkový součet procent v Custom Ladder strategii nesmí přesáhnout 100 % (aktuálně {sum} %).");
-                    }
-                }
-                loan.StrategyJson = strategyJson;
-                await _loanService.UpdateLoanAsync(user.Id, id, loan);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(string.Empty);
-            }
-        }
-
-        // GET: api/loans/sellorders/all
-        [HttpGet("sellorders/all")]
-        public async Task<ActionResult<List<SellOrderAggDto>>> GetAllSellOrders([FromQuery] SellOrderStatus? status = null, [FromQuery] string? sortBy = null, [FromQuery] string sortDir = "asc")
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            var loans = await _loanService.GetUserLoansAsync(user.Id);
-            var allOrders = loans
-                .Where(loan => loan.Status == LoanStatus.Active)
-                .SelectMany(loan => loan.SellOrders.Select(order => new SellOrderAggDto
-                {
-                    Id = order.Id,
-                    LoanId = order.LoanId,
-                    CoinmateOrderId = order.CoinmateOrderId,
-                    BtcAmount = order.BtcAmount,
-                    PricePerBtc = order.PricePerBtc,
-                    TotalCzk = order.TotalCzk,
-                    Status = order.Status,
-                    CreatedAt = order.CreatedAt,
-                    CompletedAt = order.CompletedAt,
-                    LoanReference = new LoanReferenceDto
-                    {
-                        Id = loan.Id,
-                        LoanId = loan.LoanId,
-                        LoanAmountCzk = loan.LoanAmountCzk,
-                        RepaymentDate = loan.RepaymentDate
-                    }
-                }));
-
-            if (status.HasValue)
-            {
-                allOrders = allOrders.Where(o => o.Status == status.Value);
-            }
-
-            // Default sort: by PricePerBtc ascending
-            if (!string.IsNullOrEmpty(sortBy))
-            {
-                if (sortBy.ToLower() == "createdat")
-                {
-                    allOrders = sortDir.ToLower() == "desc"
-                        ? allOrders.OrderByDescending(o => o.CreatedAt)
-                        : allOrders.OrderBy(o => o.CreatedAt);
-                }
-                // Další možnosti řazení lze přidat zde
-            }
-            else
-            {
-                allOrders = allOrders.OrderBy(o => o.PricePerBtc);
-            }
-
-            return Ok(allOrders.ToList());
-        }
-
-        // POST: api/loans/sellorders/{orderId}/open
-        [HttpPost("sellorders/{orderId}/open")]
-        public async Task<IActionResult> OpenSellOrder(int orderId)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            var result = await _loanService.OpenSellOrderAsync(user.Id, orderId);
-            if (!result)
-                return BadRequest("Order could not be opened on Coinmate.");
-            return NoContent();
-        }
-
-        // POST: api/loans/sellorders/{orderId}/cancel
-        [HttpPost("sellorders/{orderId}/cancel")]
-        public async Task<IActionResult> CancelSellOrder(int orderId)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            var result = await _loanService.CancelSellOrderAsync(user.Id, orderId);
-            if (!result)
-                return BadRequest("Order could not be cancelled on Coinmate.");
-            return NoContent();
-        }
-
-        // POST: api/loans/sellorders/sync
-        [HttpPost("sellorders/sync")]
-        public async Task<IActionResult> SyncSellOrders()
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            await _loanService.SyncSellOrdersAsync(user.Id);
-            return NoContent();
-        }
-
-        // GET: api/loans/{id}/sellorders
-        [HttpGet("{id}/sellorders")]
-        public async Task<ActionResult<List<SellOrderBasicDto>>> GetSellOrdersForLoan(int id)
-        {
-            var user = await _userService.GetOrCreateUserAsync(User);
-            try
-            {
-                var loan = await _loanService.GetLoanAsync(user.Id, id);
-                if (loan?.SellOrders == null)
-                {
-                    return Ok(new List<SellOrderBasicDto>());
-                }
-
-                var sellOrderDtos = loan.SellOrders.Select(order => new SellOrderBasicDto
-                {
-                    Id = order.Id,
-                    LoanId = order.LoanId,
-                    CoinmateOrderId = order.CoinmateOrderId,
-                    BtcAmount = order.BtcAmount,
-                    PricePerBtc = order.PricePerBtc,
-                    TotalCzk = order.TotalCzk,
-                    Status = order.Status,
-                    CreatedAt = order.CreatedAt,
-                    CompletedAt = order.CompletedAt
-                }).ToList();
-
-                return Ok(sellOrderDtos);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound($"Loan with id {id} not found for the user.");
+                return NotFound();
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "An error occurred while retrieving sell orders.");
+                _logger.LogError(ex, "Error deleting loan {LoanId} for user", id);
+                return StatusCode(500, "An error occurred while deleting the loan.");
             }
-        }
-
-        private LoanDto MapToDto(Loan loan)
-        {
-            decimal potentialValueCzk = 0m;
-            
-            // Calculate total available BTC for strategy
-            decimal totalAvailableBtcForStrategy = loan.PurchasedBtc - loan.FeesBtc - loan.TransactionFeesBtc;
-            totalAvailableBtcForStrategy = Math.Max(0m, totalAvailableBtcForStrategy);
-
-            // Calculate RemainingBtcAfterStrategy based on planned orders
-            decimal btcSoldInPlannedOrders = 0m;
-            if (loan.SellOrders != null)
-            {
-                btcSoldInPlannedOrders = loan.SellOrders
-                    .Where(so => so.Status == SellOrderStatus.Planned || 
-                                 so.Status == SellOrderStatus.Submitted || 
-                                 so.Status == SellOrderStatus.PartiallyFilled)
-                    .Sum(so => so.BtcAmount);
-            }
-            decimal remainingBtcAfterStrategy = totalAvailableBtcForStrategy - btcSoldInPlannedOrders;
-            remainingBtcAfterStrategy = Math.Max(0m, remainingBtcAfterStrategy);
-
-            // Calculate potential value based on strategy
-            if (!string.IsNullOrEmpty(loan.StrategyJson))
-            {
-                try
-                {
-                    var strategyBase = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
-                    
-                    if (strategyBase is SmartDistributionExitStrategy smartDist)
-                    {
-                        // Calculate potential value from planned sell orders
-                        decimal czkFromPlannedSellOrders = 0m;
-                        decimal highestPlannedSellPrice = 0m;
-                        
-                        if (loan.SellOrders != null)
-                        {
-                            var plannedOrders = loan.SellOrders
-                                .Where(so => so.Status == SellOrderStatus.Planned || 
-                                             so.Status == SellOrderStatus.Submitted || 
-                                             so.Status == SellOrderStatus.PartiallyFilled)
-                                .ToList();
-                                
-                            czkFromPlannedSellOrders = plannedOrders.Sum(so => so.TotalCzk);
-                            
-                            if (plannedOrders.Any())
-                            {
-                                highestPlannedSellPrice = plannedOrders.Max(so => so.PricePerBtc);
-                            }
-                        }
-                        
-                        // Add value of remaining BTC at highest planned sell price
-                        decimal valueOfRemainingBtc = 0m;
-                        if (remainingBtcAfterStrategy > 0.00000001m && highestPlannedSellPrice > 0)
-                        {
-                            valueOfRemainingBtc = remainingBtcAfterStrategy * highestPlannedSellPrice;
-                        }
-                        
-                        potentialValueCzk = czkFromPlannedSellOrders + valueOfRemainingBtc;
-                    }
-                    else if (strategyBase is CustomLadderExitStrategy customLadder && customLadder.Orders?.Any() == true)
-                    {
-                        // Calculate potential value from custom ladder orders
-                        decimal totalValueFromOrders = 0m;
-                        decimal totalBtcUsed = 0m;
-                        decimal highestTargetPrice = 0m;
-                        
-                        foreach (var order in customLadder.Orders)
-                        {
-                            decimal btcAmount = totalAvailableBtcForStrategy * (order.PercentToSell / 100m);
-                            totalValueFromOrders += btcAmount * order.TargetPriceCzk;
-                            totalBtcUsed += btcAmount;
-                            highestTargetPrice = Math.Max(highestTargetPrice, order.TargetPriceCzk);
-                        }
-                        
-                        // Add value of remaining BTC at highest target price from ladder
-                        decimal remainingBtc = Math.Max(0m, totalAvailableBtcForStrategy - totalBtcUsed);
-                        if (remainingBtc > 0 && highestTargetPrice > 0)
-                        {
-                            totalValueFromOrders += remainingBtc * highestTargetPrice;
-                        }
-                        
-                        potentialValueCzk = totalValueFromOrders;
-                    }
-                    else if (strategyBase is HodlExitStrategy)
-                    {
-                        // For HODL, potential value is just the repayment amount (no additional profit)
-                        potentialValueCzk = loan.RepaymentAmountCzk;
-                    }
-                    else
-                    {
-                        // Fallback: use sum of planned sell orders if strategy type is unknown
-                        decimal czkFromPlannedSellOrders = 0m;
-                        if (loan.SellOrders != null)
-                        {
-                            czkFromPlannedSellOrders = loan.SellOrders
-                                .Where(so => so.Status == SellOrderStatus.Planned || 
-                                             so.Status == SellOrderStatus.Submitted || 
-                                             so.Status == SellOrderStatus.PartiallyFilled)
-                                .Sum(so => so.TotalCzk);
-                        }
-                        potentialValueCzk = czkFromPlannedSellOrders;
-                    }
                 }
-                catch (Exception ex)
-                {
-                    // Log error deserializing strategy, fallback to sell orders sum
-                    decimal czkFromPlannedSellOrders = 0m;
-                    if (loan.SellOrders != null)
-                    {
-                        czkFromPlannedSellOrders = loan.SellOrders
-                            .Where(so => so.Status == SellOrderStatus.Planned || 
-                                         so.Status == SellOrderStatus.Submitted || 
-                                         so.Status == SellOrderStatus.PartiallyFilled)
-                            .Sum(so => so.TotalCzk);
-                    }
-                    potentialValueCzk = czkFromPlannedSellOrders;
-                }
-            }
-            else
-            {
-                // No strategy set, use sum of planned sell orders
-                decimal czkFromPlannedSellOrders = 0m;
-                if (loan.SellOrders != null)
-                {
-                    czkFromPlannedSellOrders = loan.SellOrders
-                        .Where(so => so.Status == SellOrderStatus.Planned || 
-                                     so.Status == SellOrderStatus.Submitted || 
-                                     so.Status == SellOrderStatus.PartiallyFilled)
-                        .Sum(so => so.TotalCzk);
-                }
-                potentialValueCzk = czkFromPlannedSellOrders;
-            }
-
-            return new LoanDto
-            {
-                Id = loan.Id,
-                LoanId = loan.LoanId,
-                LoanDate = loan.LoanDate.ToString("yyyy-MM-dd"),
-                LoanPeriodMonths = loan.LoanPeriodMonths,
-                RepaymentDate = loan.RepaymentDate.ToString("yyyy-MM-dd"),
-                Status = loan.Status,
-                LoanAmountCzk = loan.LoanAmountCzk,
-                InterestRate = loan.InterestRate,
-                RepaymentAmountCzk = loan.RepaymentAmountCzk,
-                FeesBtc = loan.FeesBtc,
-                TransactionFeesBtc = loan.TransactionFeesBtc,
-                CollateralBtc = loan.CollateralBtc,
-                TotalSentBtc = loan.TotalSentBtc,
-                PurchasedBtc = loan.PurchasedBtc,
-                PotentialValueCzk = potentialValueCzk,
-                RemainingBtcAfterStrategy = remainingBtcAfterStrategy,
-                StrategyJson = loan.StrategyJson,
-                CreatedAt = loan.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                UpdatedAt = loan.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")
-            };
-        }
     }
 }

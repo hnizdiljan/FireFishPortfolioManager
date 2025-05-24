@@ -21,6 +21,9 @@ namespace FireFishPortfolioManager.Data
                 entity.Property(e => e.Source).HasMaxLength(50);
                 entity.Property(e => e.CreatedAt).HasColumnType("datetime2(7)");
             });
+
+            // CurrentBtcCzkPrice is a view without primary key
+            modelBuilder.Entity<CurrentBtcCzkPrice>().HasNoKey();
         }
     }
 } 

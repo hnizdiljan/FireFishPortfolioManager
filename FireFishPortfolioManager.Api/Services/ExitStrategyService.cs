@@ -7,8 +7,22 @@ using FireFishPortfolioManager.Data;
 
 namespace FireFishPortfolioManager.Api.Services
 {
+    /// <summary>
+    /// Refaktorovaná služba pro správu exit strategií.
+    /// Používá Strategy Pattern a Factory Pattern pro lepší rozšiřitelnost.
+    /// </summary>
     public class ExitStrategyService
     {
+        private readonly ISellOrderGeneratorFactory _generatorFactory;
+
+        public ExitStrategyService(ISellOrderGeneratorFactory generatorFactory)
+        {
+            _generatorFactory = generatorFactory ?? throw new ArgumentNullException(nameof(generatorFactory));
+        }
+
+        /// <summary>
+        /// Generuje sell ordery pro danou půjčku podle její strategie
+        /// </summary>
         public List<SellOrder> GenerateSellOrders(Loan loan, decimal currentBtcPrice)
         {
             if (string.IsNullOrEmpty(loan.StrategyJson))
@@ -17,124 +31,88 @@ namespace FireFishPortfolioManager.Api.Services
                 return new List<SellOrder>();
             }
 
-            // Zjisti typ strategie
-            var baseStrategy = JsonConvert.DeserializeObject<ExitStrategyBase>(loan.StrategyJson, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto
-            });
-
-            if (baseStrategy == null)
+            // Deserializace strategie
+            var strategy = DeserializeStrategy(loan.StrategyJson);
+            if (strategy == null)
             {
                 throw new InvalidOperationException("Strategie nelze deserializovat.");
             }
 
-            switch (baseStrategy.Type)
-            {
-                case ExitStrategyType.HODL:
-                    // HODL: při splatnosti prodej potřebného množství BTC na splacení
-                    var calculatedBTC = loan.RepaymentAmountCzk / currentBtcPrice;
+            return GenerateSellOrders(loan, strategy, currentBtcPrice);
+        }
 
-                    return new List<SellOrder>
-                    {
-                        new SellOrder
-                        {
-                            LoanId = loan.Id,
-                            BtcAmount = Math.Max(loan.PurchasedBtc, calculatedBTC),
-                            PricePerBtc = currentBtcPrice,
-                            TotalCzk = Math.Max(loan.PurchasedBtc, calculatedBTC) * currentBtcPrice,
-                            Status = SellOrderStatus.Planned
-                        }
-                    };
-                case ExitStrategyType.CustomLadder:
-                    // Custom Ladder: uživatelsky definované ordery
-                    var custom = JsonConvert.DeserializeObject<CustomLadderExitStrategy>(loan.StrategyJson);
-                    var orders = new List<SellOrder>();
-                    if (custom?.Orders != null)
-                    {
-                        foreach (var o in custom.Orders)
-                        {
-                            var btcAmount = loan.PurchasedBtc * (o.PercentToSell / 100m);
-                            orders.Add(new SellOrder
-                            {
-                                LoanId = loan.Id,
-                                BtcAmount = btcAmount,
-                                PricePerBtc = o.TargetPriceCzk,
-                                TotalCzk = btcAmount * o.TargetPriceCzk,
-                                Status = SellOrderStatus.Planned
-                            });
-                        }
-                    }
-                    return orders;
-                case ExitStrategyType.SmartDistribution:
-                    // Smart Distribution: automatické rozdělení orderů
-                    var smart = JsonConvert.DeserializeObject<SmartDistributionExitStrategy>(loan.StrategyJson);
-                    var smartOrders = new List<SellOrder>();
-                    if (smart?.OrderCount > 0)
-                    {
-                        // Výpočet cílové ceny na základě cílového zisku
-                        decimal targetProfitPercent = smart.TargetProfitPercent;
-                        decimal targetTotalValue = loan.RepaymentAmountCzk * (1 + targetProfitPercent / 100m);
-                        decimal availableBtc = loan.PurchasedBtc - loan.FeesBtc - loan.TransactionFeesBtc;
-                        
-                        // Průměrná cílová cena pro dosažení požadovaného zisku
-                        decimal averageTargetPrice = targetTotalValue / availableBtc;
-                        
-                        // Vytvoření odstupňovaných cen
-                        decimal priceRangePercent = 0.5m; // Rozptyl cen +/-50% kolem průměrné ceny
-                        decimal minPrice = averageTargetPrice * (1 - priceRangePercent);
-                        decimal maxPrice = averageTargetPrice * (1 + priceRangePercent);
-                        
-                        // Zajistit, že minimální cena není nižší než současná cena
-                        minPrice = Math.Max(minPrice, currentBtcPrice * 1.1m); // Minimálně +10% nad současnou cenu
-                        
-                        // Pokud je rozsah příliš malý, zvětšíme ho
-                        if (maxPrice - minPrice < currentBtcPrice * 0.2m)
-                        {
-                            maxPrice = minPrice + currentBtcPrice * 0.5m; // Minimální rozptyl 50% současné ceny
-                        }
-                        
-                        decimal btcPerOrder = availableBtc / smart.OrderCount;
-                        
-                        for (int i = 0; i < smart.OrderCount; i++)
-                        {
-                            // Odstupňované ceny - lineární distribuce od min po max
-                            decimal priceMultiplier = smart.OrderCount == 1 ? 0.5m : (decimal)i / (smart.OrderCount - 1);
-                            decimal price = minPrice + (maxPrice - minPrice) * priceMultiplier;
-                            
-                            smartOrders.Add(new SellOrder
-                            {
-                                LoanId = loan.Id,
-                                BtcAmount = btcPerOrder,
-                                PricePerBtc = Math.Round(price, 0), // Zaokrouhlení na celé koruny
-                                TotalCzk = btcPerOrder * Math.Round(price, 0),
-                                Status = SellOrderStatus.Planned
-                            });
-                        }
-                    }
-                    return smartOrders;
-                default:
-                    throw new NotSupportedException($"Unknown exit strategy type: {baseStrategy.Type}");
+        /// <summary>
+        /// Generuje sell ordery pro danou půjčku podle zadané strategie
+        /// </summary>
+        public List<SellOrder> GenerateSellOrders(Loan loan, ExitStrategyBase strategy, decimal currentBtcPrice)
+        {
+            if (strategy == null)
+            {
+                throw new ArgumentNullException(nameof(strategy));
             }
+
+            // Získání odpovídajícího generátoru a vytvoření orderů
+            var generator = _generatorFactory.GetGenerator(strategy.Type);
+            return generator.GenerateSellOrders(loan, strategy, currentBtcPrice);
+        }
+
+        /// <summary>
+        /// Validuje strategii
+        /// </summary>
+        public bool ValidateStrategy(ExitStrategyBase strategy, out string? error)
+        {
+            error = null;
+            
+            if (strategy == null)
+            {
+                error = "Strategie je null.";
+                return false;
+            }
+
+            if (!_generatorFactory.IsStrategySupported(strategy.Type))
+            {
+                error = $"Typ strategie '{strategy.Type}' není podporován.";
+                return false;
+            }
+
+            var generator = _generatorFactory.GetGenerator(strategy.Type);
+            return generator.ValidateStrategy(strategy, out error);
+        }
+
+        /// <summary>
+        /// Získá seznam všech podporovaných typů strategií
+        /// </summary>
+        public IEnumerable<ExitStrategyType> GetSupportedStrategyTypes()
+        {
+            return _generatorFactory.GetSupportedStrategyTypes();
         }
 
         /// <summary>
         /// Validates a Custom Ladder strategy (sum of PercentToSell must be <= 100)
+        /// Zachování pro zpětnou kompatibilitu
         /// </summary>
+        [Obsolete("Use ValidateStrategy method instead")]
         public bool ValidateCustomLadderStrategy(CustomLadderExitStrategy strategy, out string? error)
         {
-            error = null;
-            if (strategy == null || strategy.Orders == null)
+            return ValidateStrategy(strategy, out error);
+        }
+
+        /// <summary>
+        /// Deserializuje strategii z JSON
+        /// </summary>
+        private ExitStrategyBase? DeserializeStrategy(string strategyJson)
+        {
+            try
             {
-                error = "Strategie nebo seznam orderů je prázdný.";
-                return false;
+                return JsonConvert.DeserializeObject<ExitStrategyBase>(strategyJson, new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.Auto
+                });
             }
-            var sum = strategy.Orders.Sum(o => o.PercentToSell);
-            if (sum > 100m)
+            catch (JsonException)
             {
-                error = $"Celkový součet procent v Custom Ladder strategii nesmí přesáhnout 100 % (aktuálně {sum} %).";
-                return false;
+                return null;
             }
-            return true;
         }
     }
 } 

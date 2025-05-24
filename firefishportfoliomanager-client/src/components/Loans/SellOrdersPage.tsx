@@ -33,7 +33,7 @@ export default function SellOrdersPage() {
   const fetchOrders = React.useCallback(() => {
     setLoading(true);
     setError(null);
-    let url = '/api/loans/sellorders/all';
+    let url = '/api/sellorders/all';
     const params: string[] = [];
     if (statusFilter) params.push(`status=${statusFilter}`);
     if (sortBy) params.push(`sortBy=${sortBy}`);
@@ -53,7 +53,7 @@ export default function SellOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      await callApi(`/api/loans/sellorders/${orderId}/open`, getAccessToken, { method: 'POST' });
+      await callApi(`/api/sellorders/${orderId}/open`, getAccessToken, { method: 'POST' });
       fetchOrders();
     } catch {
       setError('Chyba při otevírání orderu');
@@ -65,7 +65,7 @@ export default function SellOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      await callApi(`/api/loans/sellorders/${orderId}/cancel`, getAccessToken, { method: 'POST' });
+      await callApi(`/api/sellorders/${orderId}/cancel`, getAccessToken, { method: 'POST' });
       fetchOrders();
     } catch {
       setError('Chyba při rušení orderu');

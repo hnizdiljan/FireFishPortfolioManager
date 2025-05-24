@@ -4,6 +4,38 @@
  */
 
 export interface paths {
+    "/api/Diagnostics/test-smart-distribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Diagnostics_TestSmartDistribution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/loans/{loanId}/exitstrategy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LoanExitStrategy_GetExitStrategy"];
+        put: operations["LoanExitStrategy_SetExitStrategy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Loans": {
         parameters: {
             query?: never;
@@ -36,102 +68,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Loans/{id}/exitstrategy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["Loans_SetExitStrategy"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Loans/sellorders/all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["Loans_GetAllSellOrders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Loans/sellorders/{orderId}/open": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["Loans_OpenSellOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Loans/sellorders/{orderId}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["Loans_CancelSellOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Loans/sellorders/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["Loans_SyncSellOrders"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Loans/{id}/sellorders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["Loans_GetSellOrdersForLoan"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/market/btc-ath": {
         parameters: {
             query?: never;
@@ -142,6 +78,86 @@ export interface paths {
         get: operations["Market_GetBtcAthCzk"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sellorders/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SellOrders_GetAllSellOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sellorders/loan/{loanId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SellOrders_GetSellOrdersForLoan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sellorders/{orderId}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SellOrders_OpenSellOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sellorders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SellOrders_CancelSellOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sellorders/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SellOrders_SyncSellOrders"];
         delete?: never;
         options?: never;
         head?: never;
@@ -216,6 +232,68 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        SmartDistributionTestRequest: {
+            /** Format: decimal */
+            repaymentCzk?: number;
+            /** Format: decimal */
+            targetProfitPercent?: number;
+            /** Format: decimal */
+            btcProfitRatioPercent?: number;
+            /** Format: int32 */
+            orderCount?: number;
+            /** Format: decimal */
+            totalAvailableBtc?: number;
+            /** Format: decimal */
+            currentBtcPrice?: number;
+        };
+        ExitStrategyBase: Record<string, never>;
+        HodlExitStrategy: components["schemas"]["ExitStrategyBase"] & {
+            type?: components["schemas"]["ExitStrategyType"];
+        };
+        /** @enum {string} */
+        ExitStrategyType: "HODL" | "CustomLadder" | "SmartDistribution" | "EquidistantLadder" | "EquifrequentLadder";
+        CustomLadderExitStrategy: components["schemas"]["ExitStrategyBase"] & {
+            type?: components["schemas"]["ExitStrategyType"];
+            orders: components["schemas"]["CustomLadderOrder"][];
+        };
+        CustomLadderOrder: {
+            /** Format: decimal */
+            targetPriceCzk?: number;
+            /** Format: decimal */
+            percentToSell?: number;
+        };
+        SmartDistributionExitStrategy: components["schemas"]["ExitStrategyBase"] & {
+            type?: components["schemas"]["ExitStrategyType"];
+            /** Format: decimal */
+            targetProfitPercent?: number;
+            /** Format: int32 */
+            orderCount?: number;
+            /** Format: decimal */
+            btcProfitRatioPercent?: number;
+        };
+        EquidistantLadderExitStrategy: components["schemas"]["ExitStrategyBase"] & {
+            type?: components["schemas"]["ExitStrategyType"];
+            /** Format: decimal */
+            startPriceCzk: number;
+            /** Format: decimal */
+            endPriceCzk: number;
+            /** Format: int32 */
+            orderCount: number;
+            distributionType: components["schemas"]["DistributionType"];
+        };
+        /** @enum {string} */
+        DistributionType: "EQUAL" | "DECREASING" | "INCREASING";
+        EquifrequentLadderExitStrategy: components["schemas"]["ExitStrategyBase"] & {
+            type?: components["schemas"]["ExitStrategyType"];
+            /** Format: decimal */
+            basePriceCzk: number;
+            /** Format: decimal */
+            priceIncrementPercent: number;
+            /** Format: int32 */
+            orderCount: number;
+            /** Format: decimal */
+            btcPercentPerOrder: number;
+        };
         LoanDto: {
             /** Format: int32 */
             id: number;
@@ -248,9 +326,30 @@ export interface components {
             createdAt: string;
             updatedAt: string;
             strategyJson?: string;
+            sellOrders?: components["schemas"]["SellOrderBasicDto"][];
         };
         /** @enum {string} */
         LoanStatus: "Active" | "Closed";
+        SellOrderBasicDto: {
+            /** Format: int32 */
+            id: number;
+            /** Format: int32 */
+            loanId: number;
+            coinmateOrderId?: string | null;
+            /** Format: decimal */
+            btcAmount: number;
+            /** Format: decimal */
+            pricePerBtc: number;
+            /** Format: decimal */
+            totalCzk: number;
+            status: components["schemas"]["SellOrderStatus"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            completedAt?: string | null;
+        };
+        /** @enum {string} */
+        SellOrderStatus: "Planned" | "Submitted" | "PartiallyFilled" | "Completed" | "Cancelled" | "Failed";
         Loan: {
             /** Format: int32 */
             id?: number;
@@ -328,32 +427,9 @@ export interface components {
             /** Format: date-time */
             completedAt?: string | null;
         };
-        /** @enum {string} */
-        SellOrderStatus: "Planned" | "Submitted" | "PartiallyFilled" | "Completed" | "Cancelled" | "Failed";
-        ExitStrategyBase: Record<string, never>;
-        HodlExitStrategy: components["schemas"]["ExitStrategyBase"] & {
-            type?: components["schemas"]["ExitStrategyType"];
-        };
-        /** @enum {string} */
-        ExitStrategyType: "HODL" | "CustomLadder" | "SmartDistribution";
-        CustomLadderExitStrategy: components["schemas"]["ExitStrategyBase"] & {
-            type?: components["schemas"]["ExitStrategyType"];
-            orders: components["schemas"]["CustomLadderOrder"][];
-        };
-        CustomLadderOrder: {
+        BtcAthModel: {
             /** Format: decimal */
-            targetPriceCzk?: number;
-            /** Format: decimal */
-            percentToSell?: number;
-        };
-        SmartDistributionExitStrategy: components["schemas"]["ExitStrategyBase"] & {
-            type?: components["schemas"]["ExitStrategyType"];
-            /** Format: decimal */
-            targetProfitPercent?: number;
-            /** Format: int32 */
-            orderCount?: number;
-            /** Format: decimal */
-            btcProfitRatioPercent?: number;
+            athCzk?: number;
         };
         SellOrderAggDto: {
             /** Format: int32 */
@@ -382,28 +458,6 @@ export interface components {
             loanAmountCzk: number;
             /** Format: date-time */
             repaymentDate: string;
-        };
-        SellOrderBasicDto: {
-            /** Format: int32 */
-            id: number;
-            /** Format: int32 */
-            loanId: number;
-            coinmateOrderId?: string | null;
-            /** Format: decimal */
-            btcAmount: number;
-            /** Format: decimal */
-            pricePerBtc: number;
-            /** Format: decimal */
-            totalCzk: number;
-            status: components["schemas"]["SellOrderStatus"];
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            completedAt?: string | null;
-        };
-        BtcAthModel: {
-            /** Format: decimal */
-            athCzk?: number;
         };
         UserDto: {
             id: string;
@@ -449,6 +503,75 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Diagnostics_TestSmartDistribution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartDistributionTestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    LoanExitStrategy_GetExitStrategy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loanId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitStrategyBase"];
+                };
+            };
+        };
+    };
+    LoanExitStrategy_SetExitStrategy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loanId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExitStrategyBase"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
     Loans_GetLoans: {
         parameters: {
             query?: never;
@@ -558,32 +681,26 @@ export interface operations {
             };
         };
     };
-    Loans_SetExitStrategy: {
+    Market_GetBtcAthCzk: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: number;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExitStrategyBase"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/octet-stream": string;
+                    "application/json": components["schemas"]["BtcAthModel"];
                 };
             };
         };
     };
-    Loans_GetAllSellOrders: {
+    SellOrders_GetAllSellOrders: {
         parameters: {
             query?: {
                 status?: components["schemas"]["SellOrderStatus"] | null;
@@ -606,73 +723,12 @@ export interface operations {
             };
         };
     };
-    Loans_OpenSellOrder: {
+    SellOrders_GetSellOrdersForLoan: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                orderId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    Loans_CancelSellOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orderId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    Loans_SyncSellOrders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    Loans_GetSellOrdersForLoan: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
+                loanId: number;
             };
             cookie?: never;
         };
@@ -688,7 +744,49 @@ export interface operations {
             };
         };
     };
-    Market_GetBtcAthCzk: {
+    SellOrders_OpenSellOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    SellOrders_CancelSellOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    SellOrders_SyncSellOrders: {
         parameters: {
             query?: never;
             header?: never;
@@ -702,7 +800,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BtcAthModel"];
+                    "application/octet-stream": string;
                 };
             };
         };

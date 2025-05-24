@@ -64,10 +64,10 @@ export const executeSellStrategy = async (getAccessToken: GetAccessTokenFunction
 };
 
 /**
- * Fetch sell orders for a specific loan
- * @param getAccessToken Function to retrieve the access token
- * @param loanId ID of the loan
+ * @deprecated Use fetchSellOrdersForLoan from sellOrderService.ts instead
+ * This function is kept for backward compatibility and will be removed in future versions.
  */
 export const fetchSellOrdersForLoan = async (getAccessToken: GetAccessTokenFunction, loanId: number) => {
-  return callApi<SellOrder[]>(`/api/loans/${loanId}/sellorders`, getAccessToken);
+  console.warn('fetchSellOrdersForLoan from loanService is deprecated. Use sellOrderService instead.');
+  return callApi<SellOrder[]>(`/api/sellorders/loan/${loanId}`, getAccessToken);
 };
