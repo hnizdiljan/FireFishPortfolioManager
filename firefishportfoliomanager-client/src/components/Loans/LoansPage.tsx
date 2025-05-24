@@ -18,6 +18,8 @@ import {
   Spin,
   Empty,
   message,
+  List,
+  Divider,
 } from 'antd';
 import {
   PlusOutlined,
@@ -31,13 +33,136 @@ import {
   RiseOutlined,
   FallOutlined,
   WalletOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import { Loan, ExitStrategy, SellOrder } from '../../types';
 import { useLoansDetails } from '../../hooks/useLoans';
 import { statusDisplay, formatCurrency, formatPercentage } from '../../utils/loanUtils';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+import styled from 'styled-components';
 
 const { Title, Text } = Typography;
 const { confirm } = Modal;
+
+const PageContainer = styled.div<{ $isMobile: boolean }>`
+  padding: ${({ $isMobile }) => ($isMobile ? '16px 8px' : '24px')};
+  
+  @media (max-width: 576px) {
+    padding: 12px 4px;
+  }
+`;
+
+const HeaderRow = styled(Row)<{ $isMobile: boolean }>`
+  margin-bottom: ${({ $isMobile }) => ($isMobile ? '16px' : '24px')};
+  
+  h2 {
+    font-size: ${({ $isMobile }) => ($isMobile ? '20px' : '32px')} !important;
+    margin: 0 !important;
+  }
+  
+  @media (max-width: 576px) {
+    h2 {
+      font-size: 18px !important;
+    }
+  }
+`;
+
+const SummaryRow = styled(Row)<{ $isMobile: boolean }>`
+  margin-bottom: ${({ $isMobile }) => ($isMobile ? '16px' : '24px')};
+  
+  .ant-card {
+    height: 100%;
+    
+    .ant-card-body {
+      padding: ${({ $isMobile }) => ($isMobile ? '16px 12px' : '24px')};
+    }
+    
+    .ant-statistic-title {
+      font-size: ${({ $isMobile }) => ($isMobile ? '12px' : '14px')};
+    }
+    
+    .ant-statistic-content {
+      font-size: ${({ $isMobile }) => ($isMobile ? '18px' : '24px')} !important;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .ant-card .ant-card-body {
+      padding: 12px 8px;
+    }
+    
+    .ant-statistic-title {
+      font-size: 11px !important;
+    }
+    
+    .ant-statistic-content {
+      font-size: 16px !important;
+    }
+  }
+`;
+
+const MobileLoanCard = styled(Card)`
+  margin-bottom: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  .ant-card-body {
+    padding: 16px;
+  }
+  
+  .ant-card-actions {
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    
+    .ant-card-actions > li {
+      margin: 8px 0;
+    }
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+  }
+`;
+
+const MobileLoanHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+`;
+
+const MobileLoanDetails = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+`;
+
+const MobileDetailItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  
+  .label {
+    font-size: 11px;
+    color: #8c8c8c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  
+  .value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #262626;
+  }
+`;
 
 type LoanWithDetails = Loan & { 
   exitStrategy: ExitStrategy | null;
@@ -116,11 +241,140 @@ const getExitStrategyDisplay = (loan: LoanWithDetails) => {
   );
 };
 
+// Mobile card component for individual loans
+const MobileLoanCardComponent: React.FC<{
+  loan: LoanWithDetails;
+  btcPrice: number | null;
+  onEdit: () => void;
+  onStrategy: () => void;
+  onDelete: () => void;
+  deleteLoading: boolean;
+}> = ({ loan, btcPrice, onEdit, onStrategy, onDelete, deleteLoading }) => {
+  const daysLeft = getDaysLeft(loan.repaymentDate);
+  const isUrgent = daysLeft <= 7;
+  const isPastDue = daysLeft < 0;
+  
+  // Calculate current value
+  const sellOrders = loan.sellOrders || [];
+  const realized = sellOrders.filter((o: SellOrder) => o.status === 'Completed');
+  const realizedBtc = realized.reduce((sum: number, o: SellOrder) => sum + (o.btcAmount || 0), 0);
+  const realizedCzk = realized.reduce((sum: number, o: SellOrder) => sum + ((o.btcAmount || 0) * (o.pricePerBtc || 0)), 0);
+  const boughtBtc = (loan.purchasedBtc || 0) - (loan.feesBtc || 0) - (loan.transactionFeesBtc || 0);
+  const currentValue = ((boughtBtc - realizedBtc) * (btcPrice || 0)) + realizedCzk;
+  const currentProfit = loan.repaymentAmountCzk ? ((currentValue / loan.repaymentAmountCzk) - 1) * 100 : 0;
+  
+  const potentialProfit = loan.repaymentAmountCzk && loan.repaymentAmountCzk > 0
+    ? ((loan.potentialValueCzk || 0) / loan.repaymentAmountCzk - 1) * 100
+    : 0;
+  
+  const statusConfig = statusDisplay[loan.status as keyof typeof statusDisplay] || 
+                      { text: 'Neznámý', color: '#d9d9d9' };
+
+  const actions = [
+    <Tooltip title="Upravit půjčku" key="edit">
+      <Button type="text" icon={<EditOutlined />} onClick={onEdit} />
+    </Tooltip>,
+    <Tooltip title="Nastavit strategii" key="strategy">
+      <Button type="text" icon={<SettingOutlined />} onClick={onStrategy} />
+    </Tooltip>,
+    <Tooltip title="Smazat půjčku" key="delete">
+      <Button 
+        type="text" 
+        danger 
+        icon={<DeleteOutlined />} 
+        loading={deleteLoading}
+        onClick={onDelete} 
+      />
+    </Tooltip>,
+  ];
+
+  return (
+    <MobileLoanCard actions={actions}>
+      <MobileLoanHeader>
+        <div>
+          <Text strong style={{ fontSize: '16px' }}>#{loan.loanId}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: '12px' }}>ID: {loan.id}</Text>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <Tag color={loan.status === 'Active' ? 'green' : 'default'}>
+            {statusConfig.text}
+          </Tag>
+          <div style={{ marginTop: '4px' }}>
+            <Badge 
+              count={isPastDue ? 'Po termínu' : `${daysLeft} dní`}
+              style={{ 
+                backgroundColor: isPastDue ? '#ff4d4f' : isUrgent ? '#faad14' : '#52c41a',
+                fontSize: '10px'
+              }}
+            />
+          </div>
+        </div>
+      </MobileLoanHeader>
+      
+      <MobileLoanDetails>
+        <MobileDetailItem>
+          <div className="label">Částka půjčky</div>
+          <div className="value">{formatCurrency(loan.loanAmountCzk)}</div>
+        </MobileDetailItem>
+        
+        <MobileDetailItem>
+          <div className="label">K splacení</div>
+          <div className="value">{formatCurrency(loan.repaymentAmountCzk)}</div>
+        </MobileDetailItem>
+        
+        <MobileDetailItem>
+          <div className="label">Datum splacení</div>
+          <div className="value">{new Date(loan.repaymentDate).toLocaleDateString('cs-CZ')}</div>
+        </MobileDetailItem>
+        
+        <MobileDetailItem>
+          <div className="label">Současná hodnota</div>
+          <div className="value">
+            <Text strong>{formatCurrency(currentValue)}</Text>
+            <br />
+            <Text 
+              style={{ 
+                color: currentProfit < 0 ? '#ff4d4f' : currentProfit > 0 ? '#52c41a' : '#8c8c8c',
+                fontSize: '11px' 
+              }}
+            >
+              {currentProfit > 0 ? '+' : ''}{formatPercentage(currentProfit)}
+            </Text>
+          </div>
+        </MobileDetailItem>
+        
+        <MobileDetailItem>
+          <div className="label">Potenciální hodnota</div>
+          <div className="value">
+            <Text strong>{formatCurrency(loan.potentialValueCzk || 0)}</Text>
+            <br />
+            <Text 
+              style={{ 
+                color: potentialProfit < 0 ? '#ff4d4f' : potentialProfit > 0 ? '#52c41a' : '#8c8c8c',
+                fontSize: '11px' 
+              }}
+            >
+              {potentialProfit > 0 ? '+' : ''}{formatPercentage(potentialProfit)}
+            </Text>
+          </div>
+        </MobileDetailItem>
+        
+        <MobileDetailItem>
+          <div className="label">Exit strategie</div>
+          <div className="value">{getExitStrategyDisplay(loan)}</div>
+        </MobileDetailItem>
+      </MobileLoanDetails>
+    </MobileLoanCard>
+  );
+};
+
 const LoansPage: React.FC = () => {
   const { loansDetails, btcPrice, isLoading, error, removeLoan } = useLoansDetails();
   const navigate = useNavigate();
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const { isMobile } = useBreakpoint();
 
   const handleDelete = async (loan: LoanWithDetails) => {
     confirm({
@@ -359,9 +613,9 @@ const LoansPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <PageContainer $isMobile={isMobile}>
       {/* Header */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+      <HeaderRow justify="space-between" align="middle" $isMobile={isMobile}>
         <Col>
           <Title level={2} style={{ margin: 0 }}>
             <DollarOutlined /> Moje půjčky
@@ -377,10 +631,10 @@ const LoansPage: React.FC = () => {
             Přidat půjčku
           </Button>
         </Col>
-      </Row>
+      </HeaderRow>
 
       {/* Summary Cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <SummaryRow gutter={16} $isMobile={isMobile}>
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
@@ -425,7 +679,7 @@ const LoansPage: React.FC = () => {
             />
           </Card>
         </Col>
-      </Row>
+      </SummaryRow>
 
       {/* Error Alert */}
       {error && (
@@ -449,7 +703,23 @@ const LoansPage: React.FC = () => {
               Přidat první půjčku
             </Button>
           </Empty>
+        ) : isMobile ? (
+          // Mobile card layout
+          <div>
+            {loansDetails.map((loan) => (
+              <MobileLoanCardComponent
+                key={loan.id}
+                loan={loan as LoanWithDetails}
+                btcPrice={btcPrice}
+                onEdit={() => navigate(`/loans/${loan.id}/edit`)}
+                onStrategy={() => navigate(`/loans/${loan.id}/sell-strategy`)}
+                onDelete={() => handleDelete(loan as LoanWithDetails)}
+                deleteLoading={deleteLoading === loan.id}
+              />
+            ))}
+          </div>
         ) : (
+          // Desktop table layout
           <Table
             columns={columns}
             dataSource={loansDetails}
@@ -533,7 +803,7 @@ const LoansPage: React.FC = () => {
           }
         }
       `}</style>
-    </div>
+    </PageContainer>
   );
 };
 

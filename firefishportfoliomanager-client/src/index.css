@@ -5,9 +5,102 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Responsive base styles */
+* {
+  box-sizing: border-box;
+}
+
+/* Mobile-first responsive typography */
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 576px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 992px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Ant Design responsive table overrides */
+.ant-table-wrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .ant-table-wrapper .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  .ant-table-wrapper .ant-table-thead > tr > th {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+}
+
+/* Responsive spacing utilities */
+@media (max-width: 576px) {
+  .responsive-padding {
+    padding: 8px !important;
+  }
+  
+  .responsive-margin {
+    margin: 8px !important;
+  }
+}
+
+/* Responsive card spacing */
+@media (max-width: 768px) {
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-card-body {
+    padding: 16px 12px;
+  }
+}
+
+/* Hide desktop elements on mobile */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* Hide mobile elements on desktop */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Responsive form elements */
+@media (max-width: 576px) {
+  .ant-form-item-label {
+    text-align: left;
+  }
+  
+  .ant-col-form-label {
+    text-align: left;
+  }
 }

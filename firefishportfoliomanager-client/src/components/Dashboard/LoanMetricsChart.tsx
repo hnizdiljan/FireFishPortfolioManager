@@ -5,13 +5,20 @@ import type { MenuProps } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { LoanDto } from '@/types';
 import { useLoanMetrics, LoanMetricsDataPoint, ViewLevel } from '@/hooks/useLoanMetrics';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
 
-const ChartContainer = styled(Card)`
+const ChartContainer = styled(Card)<{ $isMobile: boolean }>`
   .ant-card-body {
-    padding: 24px;
+    padding: ${({ $isMobile }) => ($isMobile ? '16px 12px' : '24px')};
+  }
+  
+  @media (max-width: 576px) {
+    .ant-card-body {
+      padding: 12px 8px;
+    }
   }
 `;
 
@@ -22,20 +29,70 @@ const LoadingContainer = styled.div`
   height: 400px;
 `;
 
-const ControlsContainer = styled.div`
+const ControlsContainer = styled.div<{ $isMobile: boolean }>`
   margin-bottom: 16px;
   display: flex;
+  flex-direction: ${({ $isMobile }) => ($isMobile ? 'column' : 'row')};
   justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
+  align-items: ${({ $isMobile }) => ($isMobile ? 'flex-start' : 'center')};
+  gap: ${({ $isMobile }) => ($isMobile ? '12px' : '16px')};
+  
+  @media (max-width: 576px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 `;
 
-const MetricsContainer = styled.div`
+const ControlsGroup = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  flex-direction: ${({ $isMobile }) => ($isMobile ? 'column' : 'row')};
+  gap: ${({ $isMobile }) => ($isMobile ? '8px' : '16px')};
+  width: ${({ $isMobile }) => ($isMobile ? '100%' : 'auto')};
+  
+  @media (max-width: 576px) {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+`;
+
+const SwitchContainer = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: ${({ $isMobile }) => ($isMobile ? '4px 0' : '0')};
+  min-height: ${({ $isMobile }) => ($isMobile ? '32px' : 'auto')};
+  
+  .ant-switch {
+    flex-shrink: 0;
+  }
+  
+  span {
+    font-size: ${({ $isMobile }) => ($isMobile ? '13px' : '14px')};
+    line-height: 1.4;
+  }
+  
+  @media (max-width: 576px) {
+    padding: 6px 0;
+    min-height: 36px;
+    
+    span {
+      font-size: 12px;
+    }
+  }
+`;
+
+const MetricsContainer = styled.div<{ $isMobile: boolean }>`
   margin-bottom: 24px;
-  padding: 16px;
+  padding: ${({ $isMobile }) => ($isMobile ? '12px' : '16px')};
   background-color: #fafafa;
   border-radius: 8px;
+  
+  @media (max-width: 576px) {
+    padding: 8px 12px;
+    margin-bottom: 16px;
+  }
 `;
 
 const TrendContainer = styled.div`
@@ -45,22 +102,99 @@ const TrendContainer = styled.div`
   margin-top: 8px;
 `;
 
-const ChartHeader = styled.div`
+const ChartHeader = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: ${({ $isMobile }) => ($isMobile ? 'flex-start' : 'center')};
+  margin-bottom: 16px;
+  flex-direction: ${({ $isMobile }) => ($isMobile ? 'column' : 'row')};
+  gap: ${({ $isMobile }) => ($isMobile ? '12px' : '0')};
+  
+  h4 {
+    font-size: ${({ $isMobile }) => ($isMobile ? '18px' : '20px')} !important;
+    margin: 0 !important;
+  }
+  
+  @media (max-width: 576px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    
+    h4 {
+      font-size: 16px !important;
+    }
+  }
+`;
+
+const InfoContainer = styled.div<{ $isMobile: boolean }>`
+  margin-bottom: ${({ $isMobile }) => ($isMobile ? '12px' : '16px')};
+  
+  .ant-alert {
+    font-size: ${({ $isMobile }) => ($isMobile ? '12px' : '14px')};
+  }
+  
+  @media (max-width: 576px) {
+    margin-bottom: 8px;
+    
+    .ant-alert {
+      font-size: 11px;
+    }
+    
+    .ant-alert-message {
+      font-size: 12px;
+    }
+  }
+`;
+
+const NavigationContainer = styled.div<{ $isMobile: boolean }>`
+  margin-bottom: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  flex-direction: ${({ $isMobile }) => ($isMobile ? 'column' : 'row')};
+  gap: ${({ $isMobile }) => ($isMobile ? '8px' : '0')};
+  
+  @media (max-width: 576px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
 `;
 
-const InfoContainer = styled.div`
-  margin-bottom: 16px;
-`;
-
-const NavigationContainer = styled.div`
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+const ResponsiveChartContainer = styled.div<{ $isMobile: boolean }>`
+  height: ${({ $isMobile }) => ($isMobile ? '350px' : '450px')};
+  width: 100%;
+  
+  @media (max-width: 576px) {
+    height: 300px;
+  }
+  
+  .recharts-wrapper {
+    .recharts-legend-wrapper {
+      .recharts-legend-item {
+        font-size: ${({ $isMobile }) => ($isMobile ? '11px' : '12px')} !important;
+      }
+    }
+    
+    .recharts-cartesian-axis-tick-value {
+      font-size: ${({ $isMobile }) => ($isMobile ? '10px' : '12px')} !important;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .recharts-wrapper {
+      .recharts-legend-wrapper {
+        .recharts-legend-item {
+          font-size: 9px !important;
+        }
+      }
+      
+      .recharts-cartesian-axis-tick-value {
+        font-size: 8px !important;
+      }
+    }
+  }
 `;
 
 interface LoanMetricsChartProps {
@@ -82,6 +216,8 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
   // New state for drill-down functionality
   const [viewLevel, setViewLevel] = useState<ViewLevel>('monthly');
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>();
+
+  const { isMobile, isTablet } = useBreakpoint();
 
   const { 
     chartData, 
@@ -277,7 +413,7 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
 
   if (isLoading || isLoadingPriceHistory) {
     return (
-      <ChartContainer>
+      <ChartContainer $isMobile={isMobile}>
         <LoadingContainer>
           <Spin size="large" />
           <div style={{ marginTop: 16, textAlign: 'center' }}>
@@ -290,8 +426,8 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <ChartContainer>
-        <ChartHeader>
+      <ChartContainer $isMobile={isMobile}>
+        <ChartHeader $isMobile={isMobile}>
           <Title level={4}>Vývoj metrik půjček v čase</Title>
         </ChartHeader>
         <Empty description="Žádná data k zobrazení" />
@@ -300,8 +436,8 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
   }
 
   return (
-    <ChartContainer>
-      <ChartHeader>
+    <ChartContainer $isMobile={isMobile}>
+      <ChartHeader $isMobile={isMobile}>
         <Title level={4} style={{ margin: 0 }}>
           Vývoj metrik půjček v čase
         </Title>
@@ -312,7 +448,7 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
         </Dropdown>
       </ChartHeader>
 
-      <NavigationContainer>
+      <NavigationContainer $isMobile={isMobile}>
         <Breadcrumb
           items={getBreadcrumbItems()}
           style={{ margin: 0 }}
@@ -328,7 +464,7 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
         )}
       </NavigationContainer>
 
-      <InfoContainer>
+      <InfoContainer $isMobile={isMobile}>
         <Alert
           message="Historická data cen BTC"
           description={`Graf používá skutečné historické ceny BTC/CZK pro přesný výpočet hodnoty portfolia v čase. ${viewLevel === 'monthly' ? 'Kliknutím na měsíc zobrazíte denní detail.' : 'Zobrazený je denní detail vybraného měsíce.'}`}
@@ -350,7 +486,7 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
       </InfoContainer>
 
       {currentMetrics && (
-        <MetricsContainer>
+        <MetricsContainer $isMobile={isMobile}>
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={8} md={6}>
               <Statistic
@@ -423,176 +559,183 @@ const LoanMetricsChart: React.FC<LoanMetricsChartProps> = ({
         </MetricsContainer>
       )}
       
-      <ControlsContainer>
-        <Text strong>Zobrazené metriky:</Text>
-        <Space wrap>
-          <Space>
+      <ControlsContainer $isMobile={isMobile}>
+        <Text strong style={{ fontSize: isMobile ? '13px' : '14px' }}>Zobrazené metriky:</Text>
+        <ControlsGroup $isMobile={isMobile}>
+          <SwitchContainer $isMobile={isMobile}>
             <Switch
               checked={showProfitLoss}
               onChange={setShowProfitLoss}
               size="small"
             />
             <Text>Zisk/Ztráta</Text>
-          </Space>
+          </SwitchContainer>
           
-          <Space>
+          <SwitchContainer $isMobile={isMobile}>
             <Switch
               checked={showActiveLoanCount}
               onChange={setShowActiveLoanCount}
               size="small"
             />
             <Text>Počet aktivních půjček</Text>
-          </Space>
+          </SwitchContainer>
 
-          <Space>
+          <SwitchContainer $isMobile={isMobile}>
             <Switch
               checked={showCollateralValue}
               onChange={setShowCollateralValue}
               size="small"
             />
             <Text>Hodnota kolaterálu</Text>
-          </Space>
+          </SwitchContainer>
 
-          <Space>
+          <SwitchContainer $isMobile={isMobile}>
             <Switch
               checked={showBtcPrice}
               onChange={setShowBtcPrice}
               size="small"
             />
             <Text>BTC cena</Text>
-          </Space>
-        </Space>
+          </SwitchContainer>
+        </ControlsGroup>
       </ControlsContainer>
       
-      <ResponsiveContainer width="100%" height={450}>
-        <LineChart 
-          data={chartData} 
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          onClick={handleChartClick}
-          style={{ cursor: viewLevel === 'monthly' ? 'pointer' : 'default' }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="period" 
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => {
-              // Find the corresponding data point to get display label
-              const dataPoint = chartData.find(d => d.period === value);
-              if (dataPoint) {
-                return dataPoint.displayLabel;
-              }
-              // Fallback formatting
-              if (viewLevel === 'monthly') {
-                const date = new Date(value + '-01');
-                return date.toLocaleDateString('cs-CZ', { month: 'short', year: '2-digit' });
-              } else {
-                const date = new Date(value);
-                return `${date.getDate()}.${date.getMonth() + 1}.`;
-              }
+      <ResponsiveChartContainer $isMobile={isMobile}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart 
+            data={chartData} 
+            margin={{ 
+              top: 5, 
+              right: isMobile ? 10 : 30, 
+              left: isMobile ? 10 : 20, 
+              bottom: 5 
             }}
-          />
-          <YAxis 
-            yAxisId="currency"
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => `${Math.round(value / 1000)}k`}
-          />
-          {(showActiveLoanCount || showBtcPrice) && (
+            onClick={handleChartClick}
+            style={{ cursor: viewLevel === 'monthly' ? 'pointer' : 'default' }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="period" 
+              tick={{ fontSize: isMobile ? 10 : 12 }}
+              tickFormatter={(value) => {
+                // Find the corresponding data point to get display label
+                const dataPoint = chartData.find(d => d.period === value);
+                if (dataPoint) {
+                  return dataPoint.displayLabel;
+                }
+                // Fallback formatting
+                if (viewLevel === 'monthly') {
+                  const date = new Date(value + '-01');
+                  return date.toLocaleDateString('cs-CZ', { month: 'short', year: '2-digit' });
+                } else {
+                  const date = new Date(value);
+                  return `${date.getDate()}.${date.getMonth() + 1}.`;
+                }
+              }}
+            />
             <YAxis 
-              yAxisId="secondary"
-              orientation="right"
-              tick={{ fontSize: 12 }}
-              tickFormatter={(value) => showBtcPrice ? `${Math.round(value / 1000)}k` : `${value}`}
+              yAxisId="currency"
+              tick={{ fontSize: isMobile ? 10 : 12 }}
+              tickFormatter={(value) => `${Math.round(value / 1000)}k`}
             />
-          )}
-          <Tooltip content={customTooltip} />
-          <Legend />
-          
-          <Line
-            yAxisId="currency"
-            type="monotone"
-            dataKey="totalRepaymentAmount"
-            stroke="#ff7300"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            name="Celková částka ke splacení"
-            connectNulls={false}
-          />
-          
-          <Line
-            yAxisId="currency"
-            type="monotone"
-            dataKey="totalCurrentValue"
-            stroke="#1890ff"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            name="Současná hodnota všech půjček"
-            connectNulls={false}
-          />
-          
-          <Line
-            yAxisId="currency"
-            type="monotone"
-            dataKey="cumulativeLoaned"
-            stroke="#52c41a"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            name="Kumulativně půjčeno"
-            connectNulls={false}
-          />
-
-          {showProfitLoss && (
+            {(showActiveLoanCount || showBtcPrice) && (
+              <YAxis 
+                yAxisId="secondary"
+                orientation="right"
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                tickFormatter={(value) => showBtcPrice ? `${Math.round(value / 1000)}k` : `${value}`}
+              />
+            )}
+            <Tooltip content={customTooltip} />
+            <Legend wrapperStyle={{ fontSize: isMobile ? '11px' : '12px' }} />
+            
             <Line
               yAxisId="currency"
               type="monotone"
-              dataKey="profitLoss"
-              stroke="#722ed1"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              name="Zisk/Ztráta"
+              dataKey="totalRepaymentAmount"
+              stroke="#ff7300"
+              strokeWidth={isMobile ? 1.5 : 2}
+              dot={{ r: isMobile ? 2 : 3 }}
+              name="Celková částka ke splacení"
               connectNulls={false}
             />
-          )}
-
-          {showCollateralValue && (
+            
             <Line
               yAxisId="currency"
               type="monotone"
-              dataKey="totalCollateralValue"
-              stroke="#eb2f96"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              name="Hodnota kolaterálu"
+              dataKey="totalCurrentValue"
+              stroke="#1890ff"
+              strokeWidth={isMobile ? 1.5 : 2}
+              dot={{ r: isMobile ? 2 : 3 }}
+              name="Současná hodnota všech půjček"
               connectNulls={false}
             />
-          )}
-
-          {showActiveLoanCount && (
+            
             <Line
-              yAxisId="secondary"
+              yAxisId="currency"
               type="monotone"
-              dataKey="activeLoanCount"
-              stroke="#fa8c16"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              name="Počet aktivních půjček"
+              dataKey="cumulativeLoaned"
+              stroke="#52c41a"
+              strokeWidth={isMobile ? 1.5 : 2}
+              dot={{ r: isMobile ? 2 : 3 }}
+              name="Kumulativně půjčeno"
               connectNulls={false}
             />
-          )}
 
-          {showBtcPrice && (
-            <Line
-              yAxisId="secondary"
-              type="monotone"
-              dataKey="btcPrice"
-              stroke="#13c2c2"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              name="BTC cena"
-              connectNulls={false}
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+            {showProfitLoss && (
+              <Line
+                yAxisId="currency"
+                type="monotone"
+                dataKey="profitLoss"
+                stroke="#722ed1"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 2 : 3 }}
+                name="Zisk/Ztráta"
+                connectNulls={false}
+              />
+            )}
+
+            {showCollateralValue && (
+              <Line
+                yAxisId="currency"
+                type="monotone"
+                dataKey="totalCollateralValue"
+                stroke="#eb2f96"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 2 : 3 }}
+                name="Hodnota kolaterálu"
+                connectNulls={false}
+              />
+            )}
+
+            {showActiveLoanCount && (
+              <Line
+                yAxisId="secondary"
+                type="monotone"
+                dataKey="activeLoanCount"
+                stroke="#fa8c16"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 2 : 3 }}
+                name="Počet aktivních půjček"
+                connectNulls={false}
+              />
+            )}
+
+            {showBtcPrice && (
+              <Line
+                yAxisId="secondary"
+                type="monotone"
+                dataKey="btcPrice"
+                stroke="#13c2c2"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 2 : 3 }}
+                name="BTC cena"
+                connectNulls={false}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </ResponsiveChartContainer>
 
     </ChartContainer>
   );
