@@ -1,11 +1,10 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Form,
   Input,
   Select,
   DatePicker,
-  InputNumber,
   Button,
   Card,
   Row,
@@ -18,15 +17,17 @@ import {
   Spin,
   message,
   Steps,
+  Descriptions,
 } from 'antd';
 import {
   DollarOutlined,
   InfoCircleOutlined,
   SaveOutlined,
-  ArrowLeftOutlined,
+  CloseOutlined,
   CalculatorOutlined,
   WalletOutlined,
   PercentageOutlined,
+  LeftOutlined,
 } from '@ant-design/icons';
 import { LoanInput } from '@/types/loanTypes';
 import { useLoanForm } from '@hooks/useLoanForm';
@@ -40,7 +41,9 @@ import {
   formatBtc,
   validateFormStep,
 } from '@/utils/loanCalculations';
+import { CustomInputNumber } from '@/components/Common';
 import dayjs from 'dayjs';
+import { bitcoinTransactionService } from '@services/bitcoinTransactionService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -68,6 +71,10 @@ const LoanForm: React.FC = () => {
   const [btcPrice, setBtcPrice] = React.useState<number | null>(null);
   const [currentStep, setCurrentStep] = React.useState(0);
   const [isCalculating, setIsCalculating] = React.useState(false);
+  
+  // Nový stav pro transaction ID funkcionalitu
+  const [transactionId, setTransactionId] = React.useState<string>('');
+  const [isLoadingTransaction, setIsLoadingTransaction] = React.useState(false);
 
   React.useEffect(() => {
     const fetchLtvAndBtc = async () => {
@@ -97,9 +104,9 @@ const LoanForm: React.FC = () => {
         loanDate: loanData.loanDate ? dayjs(loanData.loanDate) : null,
         loanPeriodMonths: loanData.loanPeriodMonths,
         repaymentDate: loanData.repaymentDate ? dayjs(loanData.repaymentDate) : null,
-        loanAmountCzk: loanData.loanAmountCzk,
+        loanAmountCzk: loanData.loanAmountCzk ? Math.round(loanData.loanAmountCzk) : loanData.loanAmountCzk,
         interestRate: loanData.interestRate,
-        repaymentAmountCzk: loanData.repaymentAmountCzk,
+        repaymentAmountCzk: loanData.repaymentAmountCzk ? Math.round(loanData.repaymentAmountCzk) : loanData.repaymentAmountCzk,
         feesBtc: loanData.feesBtc,
         transactionFeesBtc: loanData.transactionFeesBtc,
         collateralBtc: loanData.collateralBtc,
@@ -125,19 +132,33 @@ const LoanForm: React.FC = () => {
 
   // Automatický výpočet částky k splacení
   React.useEffect(() => {
-    if (loanData.loanAmountCzk && loanData.interestRate && loanData.loanPeriodMonths) {
+    if (loanData.loanAmountCzk && loanData.interestRate && loanData.loanDate && loanData.repaymentDate) {
       const principal = loanData.loanAmountCzk;
       const rate = loanData.interestRate / 100;
-      const months = loanData.loanPeriodMonths;
       
-      // Jednoduchý úrok pro krátké období
-      const interest = principal * rate * (months / 12);
-      const repaymentAmount = principal + interest;
+      // Výpočet skutečného počtu dnů mezi datumy (stejná logika jako v useLoanForm)
+      const loanDateObj = new Date(loanData.loanDate);
+      const repaymentDateObj = new Date(loanData.repaymentDate);
+      const utcLoanDate = Date.UTC(
+        loanDateObj.getFullYear(),
+        loanDateObj.getMonth(),
+        loanDateObj.getDate()
+      );
+      const utcRepaymentDate = Date.UTC(
+        repaymentDateObj.getFullYear(),
+        repaymentDateObj.getMonth(),
+        repaymentDateObj.getDate()
+      );
+      const days = Math.max(1, Math.floor((utcRepaymentDate - utcLoanDate) / (1000 * 60 * 60 * 24)));
+      
+      // Výpočet úroku na základě skutečného počtu dnů
+      const interestFactor = 1 + (rate * days / 365);
+      const repaymentAmount = principal * interestFactor;
       
       updateField('repaymentAmountCzk', Math.round(repaymentAmount));
       form.setFieldValue('repaymentAmountCzk', Math.round(repaymentAmount));
     }
-  }, [loanData.loanAmountCzk, loanData.interestRate, loanData.loanPeriodMonths, updateField, form]);
+  }, [loanData.loanAmountCzk, loanData.interestRate, loanData.loanDate, loanData.repaymentDate, updateField, form]);
 
   // Automatický výpočet celkově odeslaného BTC
   React.useEffect(() => {
@@ -148,6 +169,43 @@ const LoanForm: React.FC = () => {
 
   const handleFieldChange = (field: keyof LoanInput, value: number | string | null) => {
     updateField(field, value);
+  };
+
+  // Funkce pro načtení dat z bitcoinové transakce
+  const handleLoadTransactionData = async () => {
+    if (!transactionId.trim()) {
+      message.warning('Zadejte prosím Transaction ID');
+      return;
+    }
+
+    setIsLoadingTransaction(true);
+    try {
+      const transactionDetails = await bitcoinTransactionService.getBitcoinTransactionDetails(
+        transactionId.trim(),
+        getAccessToken
+      );
+
+      // Předvyplnění formulářových polí
+      updateField('collateralBtc', transactionDetails.collateralBtc);
+      updateField('feesBtc', transactionDetails.fireFishFeesBtc);
+      updateField('transactionFeesBtc', transactionDetails.transactionFeesBtc);
+
+      // Aktualizace formuláře
+      form.setFieldsValue({
+        collateralBtc: transactionDetails.collateralBtc,
+        feesBtc: transactionDetails.fireFishFeesBtc,
+        transactionFeesBtc: transactionDetails.transactionFeesBtc
+      });
+
+      message.success(
+        `Transakční detaily byly úspěšně načteny ${transactionDetails.isConfirmed ? '(potvrzená transakce)' : '(nepotvrzená transakce)'}`
+      );
+    } catch (error) {
+      console.error('Error loading transaction data:', error);
+      message.error(error instanceof Error ? error.message : 'Chyba při načítání transakčních dat');
+    } finally {
+      setIsLoadingTransaction(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -534,12 +592,14 @@ const LoanForm: React.FC = () => {
                     { type: 'number', min: 1, message: 'Částka musí být větší než 0' }
                   ]}
                 >
-                  <InputNumber
+                  <CustomInputNumber
                     style={{ width: '100%' }}
                     placeholder="0"
-                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
-                    parser={(value) => value!.replace(/\s?/g, '')}
+                    precision={0}
+                    formatter={(value) => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                    parser={(value) => value ? value.replace(/\s/g, '') : ''}
                     addonAfter="CZK"
+                    allowEmpty={false}
                     onChange={(value) => handleFieldChange('loanAmountCzk', value || 0)}
                   />
                 </Form.Item>
@@ -553,13 +613,14 @@ const LoanForm: React.FC = () => {
                     { type: 'number', min: 0, max: 100, message: 'Úroková sazba musí být mezi 0-100%' }
                   ]}
                 >
-                  <InputNumber
+                  <CustomInputNumber
                     style={{ width: '100%' }}
                     placeholder="7.0"
                     step={0.1}
                     min={0}
                     max={100}
                     addonAfter={<PercentageOutlined />}
+                    allowEmpty={false}
                     onChange={(value) => handleFieldChange('interestRate', value || 0)}
                   />
                 </Form.Item>
@@ -572,19 +633,21 @@ const LoanForm: React.FC = () => {
                   label={
                     <Space>
                       Částka k splacení (CZK)
-                      <Tooltip title="Automaticky vypočteno: částka půjčky + úroky">
+                      <Tooltip title="Automaticky vypočteno na základě skutečného počtu dnů mezi datem půjčky a splatností: částka × (1 + sazba × dny/365)">
                         <InfoCircleOutlined style={{ color: '#999' }} />
                       </Tooltip>
                     </Space>
                   }
                   name="repaymentAmountCzk"
                 >
-                  <InputNumber
+                  <CustomInputNumber
                     style={{ width: '100%' }}
                     placeholder="Automaticky vypočteno"
-                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
-                    parser={(value) => value!.replace(/\s?/g, '')}
+                    precision={0}
+                    formatter={(value) => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                    parser={(value) => value ? value.replace(/\s/g, '') : ''}
                     addonAfter="CZK"
+                    allowEmpty={true}
                     disabled
                   />
                 </Form.Item>
@@ -596,6 +659,48 @@ const LoanForm: React.FC = () => {
         {/* Krok 3: Bitcoin transakce */}
         {currentStep === 2 && (
           <Space direction="vertical" style={{ width: '100%' }} size="large">
+            {/* Sekce pro načtení dat z Transaction ID */}
+            <Card 
+              className="loan-form-step-card"
+              title={
+                <Space>
+                  <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                  Automatické předvyplnění z Transaction ID
+                </Space>
+              }
+              style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}
+            >
+              <Alert
+                message="Tip: Rychlé předvyplnění"
+                description="Zadejte ID bitcoinové transakce z mempool.space pro automatické předvyplnění polí Kolaterál, FireFish poplatky a Transakční poplatky."
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              
+              <Row gutter={16} align="middle">
+                <Col xs={24} md={16}>
+                  <Input
+                    placeholder="Zadejte Transaction ID (např. ae07dab917f326357401a46424d9aaaada5f76f133f39ef1c4469bb7b3f510a0)"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Col>
+                <Col xs={24} md={8}>
+                  <Button
+                    type="primary"
+                    loading={isLoadingTransaction}
+                    onClick={handleLoadTransactionData}
+                    disabled={!transactionId.trim()}
+                    style={{ width: '100%' }}
+                  >
+                    {isLoadingTransaction ? 'Načítám...' : 'Načíst data'}
+                  </Button>
+                </Col>
+              </Row>
+            </Card>
+
             <Card 
               className="loan-form-step-card"
               title={
@@ -615,13 +720,14 @@ const LoanForm: React.FC = () => {
                       { type: 'number', min: 0, message: 'Poplatky nemohou být záporné' }
                     ]}
                   >
-                    <InputNumber
+                    <CustomInputNumber
                       style={{ width: '100%' }}
                       placeholder="0.00000000"
                       step={0.00000001}
                       precision={8}
                       min={0}
                       addonAfter="₿"
+                      allowEmpty={true}
                       onChange={(value) => handleFieldChange('feesBtc', value || 0)}
                     />
                   </Form.Item>
@@ -635,13 +741,14 @@ const LoanForm: React.FC = () => {
                       { type: 'number', min: 0, message: 'Poplatky nemohou být záporné' }
                     ]}
                   >
-                    <InputNumber
+                    <CustomInputNumber
                       style={{ width: '100%' }}
                       placeholder="0.00010000"
                       step={0.00000001}
                       precision={8}
                       min={0}
                       addonAfter="₿"
+                      allowEmpty={true}
                       onChange={(value) => handleFieldChange('transactionFeesBtc', value || 0)}
                     />
                   </Form.Item>
@@ -671,13 +778,14 @@ const LoanForm: React.FC = () => {
                       { type: 'number', min: 0, message: 'Kolaterál nemůže být záporný' }
                     ]}
                   >
-                    <InputNumber
+                    <CustomInputNumber
                       style={{ width: '100%' }}
                       placeholder="0.00000000"
                       step={0.00000001}
                       precision={8}
                       min={0}
                       addonAfter="₿"
+                      allowEmpty={true}
                       onChange={(value) => handleFieldChange('collateralBtc', value || 0)}
                     />
                   </Form.Item>
@@ -705,12 +813,13 @@ const LoanForm: React.FC = () => {
                     }
                     name="totalSentBtc"
                   >
-                    <InputNumber
+                    <CustomInputNumber
                       style={{ width: '100%' }}
                       placeholder="Automaticky vypočteno"
                       step={0.00000001}
                       precision={8}
                       addonAfter="₿"
+                      allowEmpty={true}
                       disabled
                     />
                   </Form.Item>
@@ -737,13 +846,14 @@ const LoanForm: React.FC = () => {
                       { type: 'number', min: 0, message: 'Množství nemůže být záporné' }
                     ]}
                   >
-                    <InputNumber
+                    <CustomInputNumber
                       style={{ width: '100%' }}
                       placeholder="0.00000000"
                       step={0.00000001}
                       precision={8}
                       min={0}
                       addonAfter="₿"
+                      allowEmpty={true}
                       onChange={(value) => handleFieldChange('purchasedBtc', value || 0)}
                     />
                   </Form.Item>
@@ -896,7 +1006,7 @@ const LoanForm: React.FC = () => {
             <Col>
               <Space>
                 <Button 
-                  icon={<ArrowLeftOutlined />}
+                  icon={<CloseOutlined />}
                   onClick={() => navigate('/loans')}
                 >
                   Zrušit

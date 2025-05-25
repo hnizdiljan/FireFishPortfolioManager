@@ -105,6 +105,8 @@ const MobileLoanCard = styled(Card)`
   margin-bottom: 12px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
   
   .ant-card-body {
     padding: 16px;
@@ -122,7 +124,12 @@ const MobileLoanCard = styled(Card)`
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    border-color: #1890ff;
+  }
+  
+  &:active {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -250,6 +257,7 @@ const MobileLoanCardComponent: React.FC<{
   onDelete: () => void;
   deleteLoading: boolean;
 }> = ({ loan, btcPrice, onEdit, onStrategy, onDelete, deleteLoading }) => {
+  const navigate = useNavigate();
   const daysLeft = getDaysLeft(loan.repaymentDate);
   const isUrgent = daysLeft <= 7;
   const isPastDue = daysLeft < 0;
@@ -270,12 +278,35 @@ const MobileLoanCardComponent: React.FC<{
   const statusConfig = statusDisplay[loan.status as keyof typeof statusDisplay] || 
                       { text: 'Neznámý', color: '#d9d9d9' };
 
+  const handleCardClick = (event: React.MouseEvent) => {
+    // Pokud bylo kliknuto na tlačítko, nepřesměrovávej
+    const target = event.target as HTMLElement;
+    const isActionButton = target.closest('.ant-btn') || target.closest('.ant-card-actions');
+    if (!isActionButton) {
+      navigate(`/loans/${loan.id}`);
+    }
+  };
+
   const actions = [
     <Tooltip title="Upravit půjčku" key="edit">
-      <Button type="text" icon={<EditOutlined />} onClick={onEdit} />
+      <Button 
+        type="text" 
+        icon={<EditOutlined />} 
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }} 
+      />
     </Tooltip>,
     <Tooltip title="Nastavit strategii" key="strategy">
-      <Button type="text" icon={<SettingOutlined />} onClick={onStrategy} />
+      <Button 
+        type="text" 
+        icon={<SettingOutlined />} 
+        onClick={(e) => {
+          e.stopPropagation();
+          onStrategy();
+        }} 
+      />
     </Tooltip>,
     <Tooltip title="Smazat půjčku" key="delete">
       <Button 
@@ -283,13 +314,21 @@ const MobileLoanCardComponent: React.FC<{
         danger 
         icon={<DeleteOutlined />} 
         loading={deleteLoading}
-        onClick={onDelete} 
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }} 
       />
     </Tooltip>,
   ];
 
   return (
-    <MobileLoanCard actions={actions}>
+    <MobileLoanCard 
+      actions={actions}
+      onClick={handleCardClick}
+      style={{ cursor: 'pointer' }}
+      title="Klikněte pro zobrazení detailu půjčky"
+    >
       <MobileLoanHeader>
         <div>
           <Text strong style={{ fontSize: '16px' }}>#{loan.loanId}</Text>
@@ -734,14 +773,24 @@ const LoansPage: React.FC = () => {
             }}
             rowClassName={(record) => {
               const daysLeft = getDaysLeft(record.repaymentDate);
-              if (daysLeft < 0) return 'row-past-due';
-              if (daysLeft <= 7) return 'row-urgent';
-
-              return '';
+              let className = 'clickable-row';
+              if (daysLeft < 0) className += ' row-past-due';
+              if (daysLeft <= 7) className += ' row-urgent';
+              return className;
             }}
             onRow={(record) => ({
               onMouseEnter: () => setHoveredRowId(String(record.id)),
               onMouseLeave: () => setHoveredRowId(null),
+              onClick: (event) => {
+                // Pokud bylo kliknuto na tlačítko nebo overlay s akcemi, nepřesměrovávej
+                const target = event.target as HTMLElement;
+                const isActionButton = target.closest('.ant-btn') || target.closest('.row-actions-overlay');
+                if (!isActionButton) {
+                  navigate(`/loans/${record.id}`);
+                }
+              },
+              style: { cursor: 'pointer' },
+              title: 'Klikněte pro zobrazení detailu půjčky',
             })}
           />
         )}
@@ -749,6 +798,16 @@ const LoansPage: React.FC = () => {
 
       {/* Custom Styles */}
       <style>{`
+        .clickable-row:hover {
+          background-color: #fafafa !important;
+          transform: translateX(-2px);
+          box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+        
+        .clickable-row {
+          transition: all 0.2s ease-in-out;
+        }
+        
         .row-past-due td {
           background-color: #fff2f0 !important;
         }

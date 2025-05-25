@@ -68,6 +68,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Loans/bitcoin-transaction/{txId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["Loans_GetBitcoinTransactionDetails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/market/btc-ath": {
         parameters: {
             query?: never;
@@ -494,6 +510,18 @@ export interface components {
             /** Format: decimal */
             priceCzk?: number;
         };
+        BitcoinTransactionDetails: {
+            txId: string;
+            /** Format: decimal */
+            collateralBtc: number;
+            /** Format: decimal */
+            fireFishFeesBtc: number;
+            /** Format: decimal */
+            transactionFeesBtc: number;
+            isConfirmed: boolean;
+            /** Format: int32 */
+            blockHeight?: number | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -677,6 +705,27 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    Loans_GetBitcoinTransactionDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                txId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BitcoinTransactionDetails"];
                 };
             };
         };

@@ -100,7 +100,7 @@ export const useLoanForm = (loanIdParam?: number) => {
       
       // Force update repayment if loan period changed
       if (loanPeriodChanged || Math.abs(repayment - (loanData.repaymentAmountCzk ?? 0)) > 0.001) {
-        updatedData.repaymentAmountCzk = repayment;
+        updatedData.repaymentAmountCzk = Math.round(repayment);
         hasUpdates = true;
       }
     }
@@ -151,9 +151,9 @@ export const useLoanForm = (loanIdParam?: number) => {
             loanPeriodMonths: existingLoan.loanPeriodMonths ?? 6,
             repaymentDate: existingLoan.repaymentDate,
             status: existingLoan.status,
-            loanAmountCzk: existingLoan.loanAmountCzk,
+            loanAmountCzk: existingLoan.loanAmountCzk ? Math.round(existingLoan.loanAmountCzk) : existingLoan.loanAmountCzk,
             interestRate: existingLoan.interestRate,
-            repaymentAmountCzk: existingLoan.repaymentAmountCzk,
+            repaymentAmountCzk: existingLoan.repaymentAmountCzk ? Math.round(existingLoan.repaymentAmountCzk) : existingLoan.repaymentAmountCzk,
             feesBtc: existingLoan.feesBtc,
             transactionFeesBtc: existingLoan.transactionFeesBtc,
             collateralBtc: existingLoan.collateralBtc,
@@ -209,6 +209,18 @@ export const useLoanForm = (loanIdParam?: number) => {
           (loanToSave[field] as number) = Number((loanToSave[field] as number).toFixed(8));
         }
       });
+
+      // Zaokrouhli CZK hodnoty na celé koruny
+      const czkFields: (keyof LoanInput)[] = [
+        'loanAmountCzk',
+        'repaymentAmountCzk',
+      ];
+      czkFields.forEach(field => {
+        if (typeof loanToSave[field] === 'number') {
+          (loanToSave[field] as number) = Math.round(loanToSave[field] as number);
+        }
+      });
+
       if (isEditing && loanId > 0) {
         await updateLoan(tokenFn, loanId, loanToSave);
       } else {

@@ -18,17 +18,20 @@ namespace FireFishPortfolioManager.Api.Controllers
         private readonly LoanService _loanService;
         private readonly UserService _userService;
         private readonly ILoanMappingService _mappingService;
+        private readonly IMempoolService _mempoolService;
         private readonly ILogger<LoansController> _logger;
 
         public LoansController(
             LoanService loanService,
             UserService userService,
             ILoanMappingService mappingService,
+            IMempoolService mempoolService,
             ILogger<LoansController> logger)
         {
             _loanService = loanService ?? throw new ArgumentNullException(nameof(loanService));
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
+            _mempoolService = mempoolService ?? throw new ArgumentNullException(nameof(mempoolService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -155,6 +158,49 @@ namespace FireFishPortfolioManager.Api.Controllers
                 _logger.LogError(ex, "Error deleting loan {LoanId} for user", id);
                 return StatusCode(500, "An error occurred while deleting the loan.");
             }
+        }
+
+        /// <summary>
+        /// Načte bitcoinové transakční detaily podle Transaction ID z mempool.space
+        /// </summary>
+        [HttpGet("bitcoin-transaction/{txId}")]
+        public async Task<ActionResult<BitcoinTransactionDetails>> GetBitcoinTransactionDetails(string txId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(txId))
+                {
+                    return BadRequest("Transaction ID is required");
                 }
+
+                var transactionDetails = await _mempoolService.GetTransactionDetailsAsync(txId);
+                return Ok(transactionDetails);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid transaction ID provided: {TxId}", txId);
+                return BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Transaction not found: {TxId}", txId);
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid transaction structure for {TxId}", txId);
+                return BadRequest(ex.Message);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Error communicating with mempool.space for transaction {TxId}", txId);
+                return StatusCode(502, "Unable to fetch transaction data from external service");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error when fetching Bitcoin transaction details for {TxId}", txId);
+                return StatusCode(500, "An unexpected error occurred while fetching transaction details");
+            }
+        }
     }
 }

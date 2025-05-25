@@ -158,7 +158,7 @@ const LoanDetailPage: React.FC = () => {
   const daysLeft = Math.ceil((repaymentDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
   const totalDays = Math.ceil((repaymentDate.getTime() - loanDate.getTime()) / (1000 * 3600 * 24));
   const daysElapsed = totalDays - daysLeft;
-  const progressPercent = totalDays > 0 ? Math.max(0, Math.min(100, (daysElapsed / totalDays) * 100)) : 0;
+  const progressPercent = totalDays > 0 ? Math.round(Math.max(0, Math.min(100, (daysElapsed / totalDays) * 100))) : 0;
 
   const isUrgent = daysLeft <= 7;
   const isPastDue = daysLeft < 0;

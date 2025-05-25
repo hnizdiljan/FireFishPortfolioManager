@@ -42,7 +42,11 @@ builder.Services.AddSingleton<ISellOrderGeneratorFactory, SellOrderGeneratorFact
 builder.Services.AddScoped<ILoanCalculationService, LoanCalculationService>();
 builder.Services.AddScoped<ILoanMappingService, LoanMappingService>();
 
+// Bitcoin mempool service
+builder.Services.AddScoped<IMempoolService, MempoolService>();
+
 builder.Services.AddHttpClient<CoinmateService>();
+builder.Services.AddHttpClient<MempoolService>();
 
 // Controllers, Swagger, CORS
 builder.Services.AddControllers()
